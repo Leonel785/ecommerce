@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${title}">NOVA — E-commerce</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600;1,700&display=swap">
+</head>
+<body>
+
+  <header class="topbar" th:fragment="header(activeTab)">
+    <a class="brand" href="/"><span class="brand-mark">N</span><span>NOVA</span></a>
+    <nav>
+      <a class="nav-link" th:classappend="${activeTab == 'catalogo' ? 'active' : ''}" href="/">Catálogo</a>
+      <a class="nav-link" th:classappend="${activeTab == 'carrito' ? 'active' : ''}" href="/carrito" id="cart-link">Carrito <span id="cart-count" class="count">0</span></a>
+      <a class="nav-link hidden" id="orders-link" th:classappend="${activeTab == 'pedidos' ? 'active' : ''}" href="/mis-pedidos">Mis pedidos</a>
+      <a class="nav-link hidden" id="admin-link" th:classappend="${activeTab == 'admin' ? 'active' : ''}" href="/admin/productos">Administración</a>
+    </nav>
+    <div class="account">
+      <span id="session-label" class="session-label">Visitante</span>
+      <a id="login-open" class="button button-light" href="/login">Ingresar</a>
+      <button id="logout-button" class="button button-dark hidden">Salir</button>
+    </div>
+  </header>
+
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('NOVA — Mis Pedidos')}"></head>
+<body>
+  <header th:replace="~{fragments/layout :: header('pedidos')}"></header>
+
+  <main>
+    <section id="pedidos-view" class="view">
+      <div class="page-title">
+        <p class="eyebrow">HISTORIAL</p>
+        <h1>Mis pedidos</h1>
+        <p>Consulta el estado de tus compras y sus detalles.</p>
+      </div>
+      <div id="orders-content">
+        <div class="loading">Cargando tus pedidos...</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/common.js"></script>
+  <script>
+    async function loadOrders() {
+      try {
+        const orders = await api('/api/pedidos');
+        renderOrders(orders);
+      } catch (error) {
+        $('#orders-content').innerHTML = `<div class="empty"><h3>Error al cargar pedidos</h3><p>${error.message}</p></div>`;
+      }
+    }
+
+    function renderOrders(orders) {
+      if (!orders || orders.length === 0) {
+        $('#orders-content').innerHTML = `
+          <div class="empty">
+            <h3>Aún no tienes pedidos</h3>
+            <p>Tu historial aparecerá aquí después de realizar una compra.</p>
+            <a class="button button-accent" href="/" style="display: inline-block; margin-top: 15px;">Explorar catálogo</a>
+          </div>`;
+        return;
+      }
+
+      $('#orders-content').innerHTML = orders.map(order => `
+        <article class="order-card" style="position: relative; border-radius: 4px; border: 1px solid var(--line); margin-bottom: 25px;">
+          <div class="order-top" style="padding-bottom: 12px;">
+            <div>
+              <strong>Pedido #${order.id}</strong>
+              <div class="muted" style="margin-top: 4px; font-size: 12px;">
+                ${new Date(order.fecha).toLocaleString('es-PE')}
+              </div>
+            </div>
+            <span class="badge" style="border-radius: 20px; font-weight: 600;">${order.estado}</span>
+          </div>
+          
+          <div style="margin: 15px 0;">
+            ${order.detalles.slice(0, 3).map(detail => `
+              <div class="order-item" style="font-size: 13px;">
+                <span>${detail.cantidad} × ${detail.producto}</span>
+                <strong>${money(detail.subtotal)}</strong>
+              </div>
+            `).join('')}
+            ${order.detalles.length > 3 ? `
+              <div class="muted" style="font-size: 12px; margin-top: 5px;">
+                ... y ${order.detalles.length - 3} producto(s) más.
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="summary-line summary-total" style="border-top: 1px solid var(--line); padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-size: 14px; color: var(--muted); font-weight: normal;">Total pagado:</span>
+              <strong style="margin-left: 8px;">${money(order.total)}</strong>
+            </div>
+            <a class="button button-light" href="/pedido/${order.id}" style="padding: 8px 15px; font-size: 12px; border-radius: 4px;">Ver detalle</a>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadOrders);
+  </script>
+</body>
+</html>

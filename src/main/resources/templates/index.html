@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('NOVA — E-commerce')}"></head>
+<body>
+  <header th:replace="~{fragments/layout :: header('catalogo')}"></header>
+
+  <main>
+    <section id="catalogo-view" class="view">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">SELECCIÓN DE LA SEMANA</p>
+          <h1>Lo que necesitas,<br><em>mejor elegido.</em></h1>
+          <p class="hero-copy">Tecnología, accesorios y objetos para hacer tus días más simples. Compra con confianza, recibe sin vueltas.</p>
+          <button class="button button-accent" id="btn-explorar">Explorar productos <span>→</span></button>
+        </div>
+        <div class="hero-orbit" aria-hidden="true">
+          <div class="orbit-dot dot-one"></div>
+          <div class="orbit-dot dot-two"></div>
+          <div class="hero-card">NOVA<br><small>CURATED GOODS</small></div>
+        </div>
+      </div>
+      
+      <div class="section-heading" id="products-anchor">
+        <div>
+          <p class="eyebrow">CATÁLOGO</p>
+          <h2>Favoritos de la comunidad</h2>
+        </div>
+        <div class="filter-row">
+          <input id="search-input" class="search" placeholder="Buscar productos..." aria-label="Buscar productos">
+          <select id="category-filter">
+            <option value="">Todas las categorías</option>
+          </select>
+        </div>
+      </div>
+      
+      <div id="products-grid" class="products-grid">
+        <div class="loading">Cargando catálogo...</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/common.js"></script>
+  <script>
+    let allProducts = [];
+
+    async function loadCatalog() {
+      try {
+        const query = $('#search-input').value;
+        const category = $('#category-filter').value;
+        
+        let url = '/api/productos';
+        const params = [];
+        if (query) params.push(`buscar=${encodeURIComponent(query)}`);
+        if (category) params.push(`categoria=${encodeURIComponent(category)}`);
+        if (params.length) url += '?' + params.join('&');
+
+        const products = await api(url);
+        renderProducts(products);
+      } catch (error) {
+        $('#products-grid').innerHTML = `<div class="empty"><h3>Catálogo no disponible</h3><p>${error.message}</p></div>`;
+      }
+    }
+
+    async function initCatalog() {
+      try {
+        // Fetch all products once to populate the categories dropdown
+        allProducts = await api('/api/productos');
+        populateCategories();
+        renderProducts(allProducts);
+      } catch (error) {
+        $('#products-grid').innerHTML = `<div class="empty"><h3>Catálogo no disponible</h3><p>${error.message}</p></div>`;
+      }
+    }
+
+    function populateCategories() {
+      const categories = [...new Set(allProducts.map(p => p.categoria))];
+      $('#category-filter').innerHTML = '<option value="">Todas las categorías</option>' + 
+        categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function renderProducts(products) {
+      $('#products-grid').innerHTML = products.length ? products.map(product => `
+        <article class="product-card">
+          <div class="product-visual">
+            ${product.imagen ? `<img src="/uploads/productos/${product.imagen}" alt="${product.nombre}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" alt="Sin imagen" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
+          </div>
+          <span class="product-category">${product.categoria}</span>
+          <div class="product-name">${product.nombre}</div>
+          <div class="product-meta">
+            <span class="price">${money(product.precio)}</span>
+            <span class="stock ${product.stock === 0 ? 'out' : ''}">${product.stock ? `${product.stock} disponibles` : 'Agotado'}</span>
+          </div>
+          <button class="add-button" data-add="${product.id}" ${product.stock === 0 ? 'disabled' : ''}>
+            ${product.stock ? 'Agregar al carrito' : 'Sin stock'}
+          </button>
+        </article>`).join('') : '<div class="empty"><h3>Sin coincidencias</h3><p>Prueba otra búsqueda o categoría.</p></div>';
+
+      document.querySelectorAll('[data-add]').forEach(button => {
+        button.addEventListener('click', () => addToCart(Number(button.dataset.add)));
+      });
+    }
+
+    async function addToCart(productoId) {
+      if (!state.user) {
+        window.location.href = '/login';
+        return;
+      }
+      if (state.user.rol !== 'CLIENTE') {
+        toast('Solo los clientes pueden comprar');
+        return;
+      }
+      try {
+        await api('/api/carrito', { 
+          method: 'POST', 
+          body: JSON.stringify({ productoId, cantidad: 1 }) 
+        });
+        await loadCartCount();
+        toast('Producto agregado al carrito');
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initCatalog();
+      $('#search-input').addEventListener('input', loadCatalog);
+      $('#category-filter').addEventListener('change', loadCatalog);
+      $('#btn-explorar').addEventListener('click', () => $('#products-anchor').scrollIntoView({ behavior: 'smooth' }));
+    });
+  </script>
+</body>
+</html>

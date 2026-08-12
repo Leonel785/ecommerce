@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('NOVA — Detalle de Pedido')}"></head>
+<body>
+  <header th:replace="~{fragments/layout :: header('pedidos')}"></header>
+
+  <main>
+    <section id="pedido-detalle-view" class="view">
+      <div class="page-title">
+        <p class="eyebrow"><a href="/mis-pedidos" style="color: var(--accent); font-weight: 500;">← VOLVER AL HISTORIAL</a></p>
+        <h1 id="order-title">Detalle de Pedido</h1>
+        <p id="order-subtitle">Cargando información del pedido...</p>
+      </div>
+
+      <div class="cart-layout" id="order-detail-container" style="display: none;">
+        <div class="panel">
+          <div class="panel-heading" style="border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px;">
+            <h3>Productos incluidos</h3>
+          </div>
+          <div id="order-items"></div>
+        </div>
+
+        <aside class="panel summary">
+          <p class="eyebrow">RESUMEN DE PAGO</p>
+          <h3 id="summary-title">Pedido #</h3>
+          
+          <div class="summary-line">
+            <span>Fecha</span>
+            <span id="summary-date">-</span>
+          </div>
+          <div class="summary-line">
+            <span>Estado</span>
+            <span class="badge" id="summary-status" style="display: inline-block;">-</span>
+          </div>
+          <div class="summary-line summary-total">
+            <span>Total</span>
+            <span id="summary-total">$0.00</span>
+          </div>
+          <a class="button button-accent wide" href="/" style="display: block; text-align: center; margin-top: 15px;">Seguir comprando</a>
+        </aside>
+      </div>
+      
+      <div id="error-container" class="empty hidden">
+        <h3>Error al acceder al pedido</h3>
+        <p id="error-message"></p>
+        <a class="button button-light" href="/mis-pedidos" style="display: inline-block; margin-top: 15px;">Ir a mis pedidos</a>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/common.js"></script>
+  <script th:inline="javascript">
+    const pedidoId = [[${pedidoId}]];
+
+    async function loadOrderDetail() {
+      try {
+        const order = await api(`/api/pedidos/${pedidoId}`);
+        renderOrderDetail(order);
+      } catch (error) {
+        $('#order-detail-container').classList.add('hidden');
+        $('#error-container').classList.remove('hidden');
+        $('#error-message').textContent = error.message;
+      }
+    }
+
+    function renderOrderDetail(order) {
+      $('#order-title').textContent = `Pedido #${order.id}`;
+      $('#order-subtitle').textContent = `Realizado el ${new Date(order.fecha).toLocaleString('es-PE')}`;
+      
+      $('#summary-title').textContent = `Pedido #${order.id}`;
+      $('#summary-date').textContent = new Date(order.fecha).toLocaleDateString('es-PE');
+      $('#summary-status').textContent = order.estado;
+      $('#summary-total').textContent = money(order.total);
+
+      $('#order-items').innerHTML = order.detalles.map(detail => `
+        <div class="cart-row" style="grid-template-columns: 2fr 1fr 1fr;">
+          <div class="cart-product">
+            <span class="mini-visual" style="overflow: hidden; border: 1px solid var(--line);">
+              ${detail.imagen ? `<img src="/uploads/productos/${detail.imagen}" alt="${detail.producto}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" alt="Sin imagen" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
+            </span>
+            <span>${detail.producto}</span>
+          </div>
+          <div class="qty" style="justify-content: center;">
+            <strong>${detail.cantidad} unidad(es)</strong>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 13px; font-weight: 700;">${money(detail.subtotal)}</div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">
+              ${money(detail.precioUnitario)} c/u
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      $('#order-detail-container').style.display = 'grid';
+    }
+
+    document.addEventListener('DOMContentLoaded', loadOrderDetail);
+  </script>
+</body>
+</html>

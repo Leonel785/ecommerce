@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('NOVA — Registrarse')}"></head>
+<body>
+  <header th:replace="~{fragments/layout :: header('registro')}"></header>
+
+  <main style="display: grid; place-items: center; min-height: 80vh; padding-top: 30px; padding-bottom: 50px;">
+    <div class="modal-card" style="position: static; box-shadow: var(--shadow); border: 1px solid var(--line); width: min(480px, 100%);">
+      <p class="eyebrow">ÚNETE A NOVA</p>
+      <h2>Crea tu cuenta</h2>
+      <p class="muted">Registra tus datos para poder comprar en nuestra tienda.</p>
+      
+      <form id="register-form">
+        <label>Nombres completos
+          <input id="reg-nombres" required maxlength="140" placeholder="Ej. Juan Pérez">
+        </label>
+        <label>Correo electrónico
+          <input id="reg-correo" type="email" required maxlength="160" placeholder="juan@ejemplo.com">
+        </label>
+        <div class="two-cols">
+          <label>Dirección
+            <input id="reg-direccion" required maxlength="220" placeholder="Av. Principal 123">
+          </label>
+          <label>Teléfono
+            <input id="reg-telefono" required maxlength="40" placeholder="999888777">
+          </label>
+        </div>
+        <div class="two-cols">
+          <label>Usuario
+            <input id="reg-username" required maxlength="80" placeholder="juan123">
+          </label>
+          <label>Contraseña
+            <input id="reg-password" type="password" required maxlength="120" placeholder="••••••••">
+          </label>
+        </div>
+        
+        <button class="button button-accent wide" style="margin-top: 15px;" type="submit">Registrarse</button>
+      </form>
+      
+      <p class="muted" style="margin-top: 20px; text-align: center;">
+        ¿Ya tienes cuenta? <a href="/login" style="color: var(--accent); font-weight: 600;">Inicia sesión aquí</a>
+      </p>
+    </div>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      $('#register-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        const payload = {
+          nombres: $('#reg-nombres').value,
+          correo: $('#reg-correo').value,
+          direccion: $('#reg-direccion').value,
+          telefono: $('#reg-telefono').value,
+          username: $('#reg-username').value,
+          password: $('#reg-password').value
+        };
+
+        try {
+          const response = await api('/api/auth/registro', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          toast(`Registro exitoso. ¡Bienvenido, ${response.username}!`);
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1000);
+        } catch (error) {
+          toast(error.message);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

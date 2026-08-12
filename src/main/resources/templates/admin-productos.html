@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('NOVA — Administración')}"></head>
+<body>
+  <header th:replace="~{fragments/layout :: header('admin')}"></header>
+
+  <main>
+    <section id="admin-view" class="view">
+      <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <p class="eyebrow">CONTROL GENERAL</p>
+          <h1>Administración</h1>
+          <p>Gestiona productos, existencias y estados de pedidos.</p>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+          <button class="button button-accent" id="tab-products-btn" onclick="switchTab('products')">Inventario</button>
+          <button class="button button-light" id="tab-orders-btn" onclick="switchTab('orders')">Pedidos Clientes</button>
+        </div>
+      </div>
+
+      <!-- Tab 1: Products Inventory -->
+      <div class="admin-layout" id="tab-products">
+        <form id="product-form" class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">CATÁLOGO</p>
+              <h3 id="form-title">Nuevo producto</h3>
+            </div>
+            <button type="button" id="cancel-edit" class="text-button hidden">Cancelar</button>
+          </div>
+          <input type="hidden" id="product-id">
+          
+          <label>Nombre
+            <input id="product-name" required maxlength="160">
+          </label>
+          <label>Categoría
+            <input id="product-category" required maxlength="100">
+          </label>
+          <div class="two-cols">
+            <label>Precio
+              <input id="product-price" type="number" min="0.01" step="0.01" required>
+            </label>
+            <label>Stock
+              <input id="product-stock" type="number" min="0" required>
+            </label>
+          </div>
+          <label>Imagen del producto (JPG, JPEG, PNG, WEBP - Máx. 5MB)
+            <input id="product-image-file" type="file" accept="image/png, image/jpeg, image/jpg, image/webp" style="padding: 6px 10px; width: 100%;">
+          </label>
+          <button class="button button-accent wide" style="margin-top: 15px;" type="submit">Guardar producto</button>
+        </form>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">INVENTARIO</p>
+              <h3>Productos registrados</h3>
+            </div>
+          </div>
+          <div id="admin-products">
+            <div class="loading">Cargando inventario...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Customer Orders Management -->
+      <div class="panel hidden" id="tab-orders">
+        <div class="panel-heading" style="border-bottom: 1px solid var(--line); padding-bottom: 15px; margin-bottom: 20px;">
+          <div>
+            <p class="eyebrow">PEDIDOS DE CLIENTES</p>
+            <h3>Historial General de Ventas</h3>
+          </div>
+        </div>
+        <div id="admin-orders">
+          <div class="loading">Cargando pedidos...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/common.js"></script>
+  <script>
+    let productsList = [];
+
+    // Switch between inventory CRUD and orders list
+    function switchTab(tab) {
+      if (tab === 'products') {
+        $('#tab-products').classList.remove('hidden');
+        $('#tab-orders').classList.add('hidden');
+        $('#tab-products-btn').className = 'button button-accent';
+        $('#tab-orders-btn').className = 'button button-light';
+        loadAdminProducts();
+      } else {
+        $('#tab-products').classList.add('hidden');
+        $('#tab-orders').classList.remove('hidden');
+        $('#tab-products-btn').className = 'button button-light';
+        $('#tab-orders-btn').className = 'button button-accent';
+        loadAdminOrders();
+      }
+    }
+
+    // Load and render inventory
+    async function loadAdminProducts() {
+      try {
+        productsList = await api('/api/productos');
+        renderAdminProducts();
+      } catch (error) {
+        $('#admin-products').innerHTML = `<p class="muted">Error al cargar productos: ${error.message}</p>`;
+      }
+    }
+
+    function renderAdminProducts() {
+      $('#admin-products').innerHTML = productsList.map(product => `
+        <div class="admin-product" style="grid-template-columns: 1.6fr 0.8fr 0.5fr auto;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="width: 40px; height: 40px; border: 1px solid var(--line); display: inline-block; overflow: hidden; flex-shrink: 0; border-radius: 4px;">
+              ${product.imagen ? `<img src="/uploads/productos/${product.imagen}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
+            </span>
+            <div>
+              <strong>${product.nombre}</strong>
+              <small>${product.categoria}</small>
+            </div>
+          </div>
+          <span style="font-weight: 700;">${money(product.precio)}</span>
+          <span class="admin-stock">${product.stock} uds.</span>
+          <div class="admin-actions">
+            <button onclick="editProduct(${product.id})">Editar</button>
+            <button onclick="deleteProduct(${product.id})" style="color: var(--accent);">Eliminar</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // CRUD functions
+    function editProduct(id) {
+      const product = productsList.find(p => p.id === id);
+      $('#product-id').value = product.id;
+      $('#product-name').value = product.nombre;
+      $('#product-category').value = product.categoria;
+      $('#product-price').value = product.precio;
+      $('#product-stock').value = product.stock;
+      
+      $('#form-title').textContent = 'Editar producto';
+      $('#cancel-edit').classList.remove('hidden');
+      $('#product-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function resetProductForm() {
+      $('#product-form').reset();
+      $('#product-id').value = '';
+      $('#product-image-file').value = '';
+      $('#form-title').textContent = 'Nuevo producto';
+      $('#cancel-edit').classList.add('hidden');
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('¿Seguro que deseas eliminar este producto permanentemente del catálogo?')) return;
+      try {
+        await api(`/api/productos/${id}`, { method: 'DELETE' });
+        toast('Producto eliminado');
+        loadAdminProducts();
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    $('#product-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const id = $('#product-id').value;
+      
+      let finalImagenName = null;
+      if (id) {
+        const existingProd = productsList.find(p => p.id === Number(id));
+        finalImagenName = existingProd ? existingProd.imagen : null;
+      }
+      
+      const fileInput = $('#product-image-file');
+      if (fileInput.files.length > 0) {
+        const fileFormData = new FormData();
+        fileFormData.append('file', fileInput.files[0]);
+        
+        try {
+          const uploadRes = await fetch('/api/productos/upload', {
+            method: 'POST',
+            body: fileFormData
+          });
+          const text = await uploadRes.text();
+          const uploadData = text ? JSON.parse(text) : null;
+          if (!uploadRes.ok) throw new Error(uploadData?.message || 'Error al subir la imagen');
+          finalImagenName = uploadData.filename;
+        } catch (uploadError) {
+          toast(uploadError.message);
+          return;
+        }
+      }
+
+      const payload = {
+        nombre: $('#product-name').value,
+        categoria: $('#product-category').value,
+        precio: Number($('#product-price').value),
+        stock: Number($('#product-stock').value),
+        imagen: finalImagenName
+      };
+
+      try {
+        await api(id ? `/api/productos/${id}` : '/api/productos', {
+          method: id ? 'PUT' : 'POST',
+          body: JSON.stringify(payload)
+        });
+        toast(id ? 'Producto actualizado' : 'Producto creado');
+        resetProductForm();
+        loadAdminProducts();
+      } catch (error) {
+        toast(error.message);
+      }
+    });
+
+    $('#cancel-edit').addEventListener('click', resetProductForm);
+
+    // Load and render all orders in system
+    async function loadAdminOrders() {
+      try {
+        const orders = await api('/api/pedidos/admin');
+        renderAdminOrders(orders);
+      } catch (error) {
+        $('#admin-orders').innerHTML = `<p class="muted">Error al cargar pedidos: ${error.message}</p>`;
+      }
+    }
+
+    function renderAdminOrders(orders) {
+      if (!orders || orders.length === 0) {
+        $('#admin-orders').innerHTML = '<div class="empty"><h3>No hay pedidos registrados en el sistema</h3></div>';
+        return;
+      }
+
+      $('#admin-orders').innerHTML = `
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--line); color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
+              <th style="padding: 12px 8px;">ID</th>
+              <th style="padding: 12px 8px;">Fecha</th>
+              <th style="padding: 12px 8px;">Total</th>
+              <th style="padding: 12px 8px;">Estado del Pedido</th>
+              <th style="padding: 12px 8px; text-align: right;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${orders.map(order => `
+              <tr style="border-bottom: 1px solid var(--line);">
+                <td style="padding: 15px 8px;"><strong>#${order.id}</strong></td>
+                <td style="padding: 15px 8px;">${new Date(order.fecha).toLocaleString('es-PE')}</td>
+                <td style="padding: 15px 8px;"><strong>${money(order.total)}</strong></td>
+                <td style="padding: 15px 8px;">
+                  <select onchange="updateOrderStatus(${order.id}, this.value)" style="padding: 6px 10px; font-size: 12px;">
+                    <option value="PENDIENTE" ${order.estado === 'PENDIENTE' ? 'selected' : ''}>PENDIENTE</option>
+                    <option value="PAGADO" ${order.estado === 'PAGADO' ? 'selected' : ''}>PAGADO</option>
+                    <option value="ENVIADO" ${order.estado === 'ENVIADO' ? 'selected' : ''}>ENVIADO</option>
+                    <option value="ENTREGADO" ${order.estado === 'ENTREGADO' ? 'selected' : ''}>ENTREGADO</option>
+                  </select>
+                </td>
+                <td style="padding: 15px 8px; text-align: right;">
+                  <a class="button button-light" href="/pedido/${order.id}" style="padding: 6px 12px; font-size: 11px;">Ver Detalle</a>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      try {
+        await api(`/api/pedidos/admin/${orderId}/estado?estado=${newStatus}`, {
+          method: 'PUT'
+        });
+        toast(`Pedido #${orderId} actualizado a ${newStatus}`);
+      } catch (error) {
+        toast(error.message);
+        loadAdminOrders();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAdminProducts();
+    });
+  </script>
+</body>
+</html>

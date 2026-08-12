@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('NOVA — Iniciar Sesión')}"></head>
+<body>
+  <header th:replace="~{fragments/layout :: header('login')}"></header>
+
+  <main style="display: grid; place-items: center; min-height: 70vh;">
+    <div class="modal-card" style="position: static; box-shadow: var(--shadow); border: 1px solid var(--line);">
+      <p class="eyebrow">BIENVENIDO A NOVA</p>
+      <h2>Inicia sesión</h2>
+      <p class="muted">Usa una cuenta demo o regístrate para explorar.</p>
+      
+      <form id="login-form">
+        <label>Usuario
+          <input id="username" autocomplete="username" required>
+        </label>
+        <label>Contraseña
+          <input id="password" type="password" autocomplete="current-password" required>
+        </label>
+        
+        <div class="demo-hints" style="margin-top: 10px;">
+          <button type="button" data-demo="cliente">Cliente demo</button>
+          <button type="button" data-demo="admin">Admin demo</button>
+        </div>
+        
+        <button class="button button-accent wide" type="submit">Ingresar</button>
+      </form>
+      
+      <p class="muted" style="margin-top: 20px; text-align: center;">
+        ¿No tienes cuenta? <a href="/registro" style="color: var(--accent); font-weight: 600;">Regístrate aquí</a>
+      </p>
+    </div>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      $('#login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          const response = await api('/api/auth/login', { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+              username: $('#username').value, 
+              password: $('#password').value 
+            }) 
+          });
+          toast(`Bienvenido, ${response.username}`);
+          setTimeout(() => {
+            if (response.rol === 'ADMIN') {
+              window.location.href = '/admin/productos';
+            } else {
+              window.location.href = '/';
+            }
+          }, 1000);
+        } catch (error) {
+          toast(error.message);
+        }
+      });
+
+      document.querySelectorAll('[data-demo]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const admin = button.dataset.demo === 'admin';
+          $('#username').value = admin ? 'admin' : 'cliente';
+          $('#password').value = admin ? 'admin123' : 'cliente123';
+        });
+      });
+    });
+  </script>
+</body>
+</html>

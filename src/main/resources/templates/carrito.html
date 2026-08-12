@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('NOVA — Carrito')}"></head>
+<body>
+  <header th:replace="~{fragments/layout :: header('carrito')}"></header>
+
+  <main>
+    <section id="carrito-view" class="view">
+      <div class="page-title">
+        <p class="eyebrow">TU COMPRA</p>
+        <h1>Carrito</h1>
+        <p>Revisa tus productos antes de confirmar.</p>
+      </div>
+      <div id="cart-content">
+        <div class="loading">Cargando tu carrito...</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/common.js"></script>
+  <script>
+    async function loadCart() {
+      try {
+        const cart = await api('/api/carrito');
+        renderCart(cart);
+      } catch (error) {
+        $('#cart-content').innerHTML = `<div class="empty"><h3>No se pudo cargar el carrito</h3><p>${error.message}</p></div>`;
+      }
+    }
+
+    function renderCart(cart) {
+      if (!cart?.detalles?.length) {
+        $('#cart-content').innerHTML = `
+          <div class="empty">
+            <h3>Tu carrito está esperando</h3>
+            <p>Agrega algo especial desde el catálogo.</p>
+            <a class="button button-accent" href="/" style="display: inline-block; margin-top: 15px;">Ver catálogo</a>
+          </div>`;
+        const badge = $('#cart-count');
+        if (badge) badge.textContent = '0';
+        return;
+      }
+
+      // Update cart count badge
+      const totalItems = cart.detalles.reduce((total, detail) => total + detail.cantidad, 0);
+      const badge = $('#cart-count');
+      if (badge) badge.textContent = totalItems;
+
+      $('#cart-content').innerHTML = `
+        <div class="cart-layout">
+          <div class="panel">
+            ${cart.detalles.map(detail => `
+              <div class="cart-row">
+                <div class="cart-product">
+                  <span class="mini-visual" style="overflow: hidden; border: 1px solid var(--line);">
+                    ${detail.imagen ? `<img src="/uploads/productos/${detail.imagen}" alt="${detail.producto}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" alt="Sin imagen" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
+                  </span>
+                  <div>
+                    <strong>${detail.producto}</strong>
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+                      Precio unitario: ${money(detail.precioUnitario)}
+                    </div>
+                  </div>
+                </div>
+                <div class="qty">
+                  <button onclick="changeQuantity(${detail.id}, -1)">−</button>
+                  <strong>${detail.cantidad}</strong>
+                  <button onclick="changeQuantity(${detail.id}, 1)">+</button>
+                </div>
+                <strong>${money(detail.subtotal)}</strong>
+                <button class="cart-remove" onclick="removeDetail(${detail.id})">Eliminar</button>
+              </div>
+            `).join('')}
+          </div>
+          <aside class="panel summary">
+            <p class="eyebrow">RESUMEN</p>
+            <h3>Tu pedido</h3>
+            <div class="summary-line">
+              <span>Productos distintos</span>
+              <span>${cart.detalles.length}</span>
+            </div>
+            <div class="summary-line">
+              <span>Total de unidades</span>
+              <span>${totalItems}</span>
+            </div>
+            <div class="summary-line summary-total">
+              <span>Total</span>
+              <span>${money(cart.total)}</span>
+            </div>
+            <button class="button button-accent wide" onclick="confirmOrder()">Confirmar compra</button>
+            <button class="button button-light wide" style="margin-top: 10px;" onclick="clearCart()">Vaciar carrito</button>
+          </aside>
+        </div>`;
+    }
+
+    async function changeQuantity(id, delta) {
+      const detail = state.cart.detalles.find(item => item.id === id);
+      const newQty = detail.cantidad + delta;
+      if (newQty < 1) {
+        await removeDetail(id);
+        return;
+      }
+      try {
+        const cart = await api(`/api/carrito/detalle/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ productoId: detail.productoId, cantidad: newQty })
+        });
+        state.cart = cart;
+        renderCart(cart);
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    async function removeDetail(id) {
+      if (!confirm('¿Quitar este producto del carrito?')) return;
+      try {
+        const cart = await api(`/api/carrito/detalle/${id}`, { method: 'DELETE' });
+        state.cart = cart;
+        renderCart(cart);
+        toast('Producto eliminado');
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    async function clearCart() {
+      if (!confirm('¿Vaciar todo tu carrito de compras?')) return;
+      try {
+        await api('/api/carrito', { method: 'DELETE' });
+        state.cart = { detalles: [], total: 0 };
+        renderCart(state.cart);
+        toast('Carrito vaciado');
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    async function confirmOrder() {
+      try {
+        const order = await api('/api/pedidos/confirmar', { method: 'POST' });
+        state.cart = { detalles: [], total: 0 };
+        const badge = $('#cart-count');
+        if (badge) badge.textContent = '0';
+        toast(`¡Pedido #${order.id} confirmado con éxito!`);
+        setTimeout(() => {
+          window.location.href = `/pedido/${order.id}`;
+        }, 1500);
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadCart);
+  </script>
+</body>
+</html>
