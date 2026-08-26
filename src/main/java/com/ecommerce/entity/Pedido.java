@@ -6,6 +6,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entidad JPA que representa un pedido de compra realizado por un {@link Cliente}.
+ * <p>
+ * Contiene la fecha de confirmación, el monto total pagado, el {@link EstadoPedido}
+ * actual y la lista de {@link DetallePedido}s asociados.
+ * </p>
+ */
 @Entity
 @Table(name = "pedido")
 public class Pedido {

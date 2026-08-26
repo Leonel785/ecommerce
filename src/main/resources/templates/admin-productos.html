@@ -1,11 +1,20 @@
 <!DOCTYPE html>
+<!--
+  Vista del Panel de Administración.
+  Ofrece dos pestañas de gestión para usuarios con rol ADMIN:
+  1. Gestión CRUD del Inventario de Productos (Alta, Edición, Eliminación y Subida de Imágenes).
+  2. Gestión y Modificación del Estado de Pedidos de Clientes.
+-->
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!-- Importa la cabecera dinámica compartida -->
 <head th:replace="~{fragments/layout :: head('NOVA — Administración')}"></head>
 <body>
+  <!-- Importa la barra de navegación superior con la pestaña 'admin' activa -->
   <header th:replace="~{fragments/layout :: header('admin')}"></header>
 
   <main>
     <section id="admin-view" class="view">
+      <!-- Encabezado de la página con botones de alternancia entre pestañas (Tabs) -->
       <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end;">
         <div>
           <p class="eyebrow">CONTROL GENERAL</p>
@@ -18,8 +27,9 @@
         </div>
       </div>
 
-      <!-- Tab 1: Products Inventory -->
+      <!-- Tab 1: Gestión de Inventario de Productos -->
       <div class="admin-layout" id="tab-products">
+        <!-- Formulario de Creación / Edición de Producto -->
         <form id="product-form" class="panel">
           <div class="panel-heading">
             <div>
@@ -50,6 +60,7 @@
           <button class="button button-accent wide" style="margin-top: 15px;" type="submit">Guardar producto</button>
         </form>
 
+        <!-- Panel de Lista de Productos Registrados -->
         <div class="panel">
           <div class="panel-heading">
             <div>
@@ -63,7 +74,7 @@
         </div>
       </div>
 
-      <!-- Tab 2: Customer Orders Management -->
+      <!-- Tab 2: Gestión de Pedidos de Clientes -->
       <div class="panel hidden" id="tab-orders">
         <div class="panel-heading" style="border-bottom: 1px solid var(--line); padding-bottom: 15px; margin-bottom: 20px;">
           <div>
@@ -78,13 +89,19 @@
     </section>
   </main>
 
+  <!-- Componente Toast de notificaciones -->
   <div id="toast" class="toast"></div>
 
+  <!-- Scripts y lógica interactiva de administración -->
   <script src="/common.js"></script>
   <script>
+    /** Almacena localmente la lista de productos del inventario */
     let productsList = [];
 
-    // Switch between inventory CRUD and orders list
+    /**
+     * Alterna la visualización entre el tab de inventario de productos y el tab de pedidos general.
+     * @param {'products'|'orders'} tab pestaña a activar.
+     */
     function switchTab(tab) {
       if (tab === 'products') {
         $('#tab-products').classList.remove('hidden');
@@ -101,7 +118,9 @@
       }
     }
 
-    // Load and render inventory
+    /**
+     * Obtiene la lista completa de productos desde GET `/api/productos`.
+     */
     async function loadAdminProducts() {
       try {
         productsList = await api('/api/productos');
@@ -111,6 +130,9 @@
       }
     }
 
+    /**
+     * Renderiza las filas de productos en la lista del panel de administración.
+     */
     function renderAdminProducts() {
       $('#admin-products').innerHTML = productsList.map(product => `
         <div class="admin-product" style="grid-template-columns: 1.6fr 0.8fr 0.5fr auto;">
@@ -133,7 +155,10 @@
       `).join('');
     }
 
-    // CRUD functions
+    /**
+     * Prepara el formulario para editar un producto existente poblando sus campos.
+     * @param {number} id identificador del producto a editar.
+     */
     function editProduct(id) {
       const product = productsList.find(p => p.id === id);
       $('#product-id').value = product.id;
@@ -147,6 +172,9 @@
       $('#product-form').scrollIntoView({ behavior: 'smooth' });
     }
 
+    /**
+     * Resetea el formulario de productos al estado de 'Nuevo producto'.
+     */
     function resetProductForm() {
       $('#product-form').reset();
       $('#product-id').value = '';
@@ -155,6 +183,10 @@
       $('#cancel-edit').classList.add('hidden');
     }
 
+    /**
+     * Solicita confirmación y elimina un producto vía DELETE `/api/productos/{id}`.
+     * @param {number} id identificador del producto.
+     */
     async function deleteProduct(id) {
       if (!confirm('¿Seguro que deseas eliminar este producto permanentemente del catálogo?')) return;
       try {
@@ -166,6 +198,10 @@
       }
     }
 
+    /**
+     * Evento submit del formulario de productos. Si se seleccionó un archivo de imagen,
+     * primero realiza el upload a `/api/productos/upload` y luego crea (POST) o actualiza (PUT) el producto.
+     */
     $('#product-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const id = $('#product-id').value;
@@ -219,7 +255,9 @@
 
     $('#cancel-edit').addEventListener('click', resetProductForm);
 
-    // Load and render all orders in system
+    /**
+     * Carga todos los pedidos del sistema desde GET `/api/pedidos/admin`.
+     */
     async function loadAdminOrders() {
       try {
         const orders = await api('/api/pedidos/admin');
@@ -229,6 +267,10 @@
       }
     }
 
+    /**
+     * Renderiza la tabla de pedidos generales y sus selectores de cambio de estado.
+     * @param {Array} orders lista completa de pedidos.
+     */
     function renderAdminOrders(orders) {
       if (!orders || orders.length === 0) {
         $('#admin-orders').innerHTML = '<div class="empty"><h3>No hay pedidos registrados en el sistema</h3></div>';
@@ -269,6 +311,11 @@
         </table>`;
     }
 
+    /**
+     * Actualiza el estado de un pedido enviando PUT `/api/pedidos/admin/{id}/estado?estado={nuevoEstado}`.
+     * @param {number} orderId identificador del pedido.
+     * @param {string} newStatus nuevo estado a asignar.
+     */
     async function updateOrderStatus(orderId, newStatus) {
       try {
         await api(`/api/pedidos/admin/${orderId}/estado?estado=${newStatus}`, {
@@ -281,6 +328,7 @@
       }
     }
 
+    // Inicializa la pestaña de inventario de administración al cargar el DOM
     document.addEventListener('DOMContentLoaded', () => {
       loadAdminProducts();
     });

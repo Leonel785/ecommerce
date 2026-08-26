@@ -1,18 +1,27 @@
 <!DOCTYPE html>
+<!--
+  Vista del Detalle Completo de un Pedido Específico.
+  Carga los datos del pedido según la variable inyectada Thymeleaf `${pedidoId}` desde GET `/api/pedidos/{id}`.
+-->
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!-- Importa la cabecera dinámica compartida -->
 <head th:replace="~{fragments/layout :: head('NOVA — Detalle de Pedido')}"></head>
 <body>
+  <!-- Importa la barra de navegación superior con la pestaña 'pedidos' activa -->
   <header th:replace="~{fragments/layout :: header('pedidos')}"></header>
 
   <main>
     <section id="pedido-detalle-view" class="view">
+      <!-- Título y botón de regresar -->
       <div class="page-title">
         <p class="eyebrow"><a href="/mis-pedidos" style="color: var(--accent); font-weight: 500;">← VOLVER AL HISTORIAL</a></p>
         <h1 id="order-title">Detalle de Pedido</h1>
         <p id="order-subtitle">Cargando información del pedido...</p>
       </div>
 
+      <!-- Contenedor principal con el desglose de productos y resumen de pago -->
       <div class="cart-layout" id="order-detail-container" style="display: none;">
+        <!-- Panel izquierdo: lista de productos incluidos -->
         <div class="panel">
           <div class="panel-heading" style="border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px;">
             <h3>Productos incluidos</h3>
@@ -20,6 +29,7 @@
           <div id="order-items"></div>
         </div>
 
+        <!-- Panel derecho: resumen de fecha, estado y total pagado -->
         <aside class="panel summary">
           <p class="eyebrow">RESUMEN DE PAGO</p>
           <h3 id="summary-title">Pedido #</h3>
@@ -40,6 +50,7 @@
         </aside>
       </div>
       
+      <!-- Mensaje de error si la petición falla o no posee permisos -->
       <div id="error-container" class="empty hidden">
         <h3>Error al acceder al pedido</h3>
         <p id="error-message"></p>
@@ -48,12 +59,18 @@
     </section>
   </main>
 
+  <!-- Componente Toast de notificaciones -->
   <div id="toast" class="toast"></div>
 
+  <!-- Scripts e inyección de la variable pedidoId de Thymeleaf -->
   <script src="/common.js"></script>
   <script th:inline="javascript">
-    const pedidoId = [[${pedidoId}]];
+    /** ID del pedido pasado desde el controlador MVC */
+    const pedidoId = /*[[${pedidoId}]]*/ 0;
 
+    /**
+     * Realiza la consulta del pedido especificado vía GET `/api/pedidos/{pedidoId}`.
+     */
     async function loadOrderDetail() {
       try {
         const order = await api(`/api/pedidos/${pedidoId}`);
@@ -65,6 +82,10 @@
       }
     }
 
+    /**
+     * Llena los campos dinámicos y la lista de ítems del pedido en la pantalla.
+     * @param {Object} order objeto con los datos completos del pedido.
+     */
     function renderOrderDetail(order) {
       $('#order-title').textContent = `Pedido #${order.id}`;
       $('#order-subtitle').textContent = `Realizado el ${new Date(order.fecha).toLocaleString('es-PE')}`;
@@ -97,6 +118,7 @@
       $('#order-detail-container').style.display = 'grid';
     }
 
+    // Inicializa al cargar la página
     document.addEventListener('DOMContentLoaded', loadOrderDetail);
   </script>
 </body>

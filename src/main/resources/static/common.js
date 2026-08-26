@@ -1,7 +1,28 @@
+/**
+ * Estado global compartido de la sesión de usuario y el carrito.
+ */
 const state = { user: null, cart: null };
+
+/**
+ * Atajo utilitario para seleccionar un elemento del DOM por su selector CSS.
+ * @param {string} selector selector CSS.
+ * @returns {Element|null} elemento encontrado.
+ */
 const $ = (selector) => document.querySelector(selector);
+
+/**
+ * Formatea un valor numérico como moneda en Soles Peruanos (PEN).
+ * @param {number} value valor a formar.
+ * @returns {string} cadena formateada en moneda.
+ */
 const money = (value) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value || 0);
 
+/**
+ * Envoltorio para realizar peticiones HTTP Fetch a la API REST del backend con manejo automático de JSON y errores.
+ * @param {string} url endpoint de la API.
+ * @param {Object} options opciones adicionales de la petición fetch.
+ * @returns {Promise<any>} datos parseados del cuerpo de la respuesta.
+ */
 const api = async (url, options = {}) => {
   const response = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
   const text = await response.text();
@@ -10,6 +31,10 @@ const api = async (url, options = {}) => {
   return data;
 };
 
+/**
+ * Muestra una notificación emergente (toast) en la interfaz.
+ * @param {string} message mensaje a desplegar.
+ */
 const toast = (message) => { 
   const node = $('#toast'); 
   if (node) {
@@ -21,6 +46,9 @@ const toast = (message) => {
   }
 };
 
+/**
+ * Consulta la sesión activa del usuario mediante GET `/api/auth/me` y actualiza los elementos UI globales.
+ */
 async function loadSession() {
   try {
     const session = await api('/api/auth/me');
@@ -41,6 +69,9 @@ async function loadSession() {
   }
 }
 
+/**
+ * Actualiza la visibilidad de los elementos de navegación y etiquetas de sesión según el estado del usuario.
+ */
 function updateSessionUI() {
   const user = state.user;
   const label = $('#session-label');
@@ -56,6 +87,9 @@ function updateSessionUI() {
   if (adminLnk) adminLnk.classList.toggle('hidden', user?.rol !== 'ADMIN');
 }
 
+/**
+ * Obtiene el carrito actual del cliente e incrementa la insignia con la suma de unidades.
+ */
 async function loadCartCount() {
   try {
     const cart = await api('/api/carrito');
@@ -69,6 +103,7 @@ async function loadCartCount() {
   }
 }
 
+// Inicialización de sesión y evento de cierre de sesión al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
   loadSession();
   const logoutBtn = $('#logout-button');

@@ -1,26 +1,41 @@
 <!DOCTYPE html>
+<!--
+  Vista del Carrito de Compras del Cliente.
+  Muestra la lista interactiva de ítems agregados, permite ajustar cantidades,
+  eliminar productos, vaciar el carrito y confirmar la compra.
+-->
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!-- Importa la cabecera dinámica compartida -->
 <head th:replace="~{fragments/layout :: head('NOVA — Carrito')}"></head>
 <body>
+  <!-- Importa la barra de navegación superior con la pestaña 'carrito' activa -->
   <header th:replace="~{fragments/layout :: header('carrito')}"></header>
 
   <main>
     <section id="carrito-view" class="view">
+      <!-- Título principal de la página -->
       <div class="page-title">
         <p class="eyebrow">TU COMPRA</p>
         <h1>Carrito</h1>
         <p>Revisa tus productos antes de confirmar.</p>
       </div>
+
+      <!-- Contenedor dinámico donde se renderizan los productos o el carrito vacío -->
       <div id="cart-content">
         <div class="loading">Cargando tu carrito...</div>
       </div>
     </section>
   </main>
 
+  <!-- Componente Toast de notificaciones -->
   <div id="toast" class="toast"></div>
 
+  <!-- Scripts y lógica interactiva del carrito -->
   <script src="/common.js"></script>
   <script>
+    /**
+     * Carga el estado actual del carrito desde GET `/api/carrito`.
+     */
     async function loadCart() {
       try {
         const cart = await api('/api/carrito');
@@ -30,6 +45,10 @@
       }
     }
 
+    /**
+     * Renderiza el contenido del carrito (ítems, subtotales, totales y resumen de pedido).
+     * @param {Object} cart objeto carrito retornado por la API.
+     */
     function renderCart(cart) {
       if (!cart?.detalles?.length) {
         $('#cart-content').innerHTML = `
@@ -43,11 +62,12 @@
         return;
       }
 
-      // Update cart count badge
+      // Actualiza la insignia (badge) con el total acumulado de unidades
       const totalItems = cart.detalles.reduce((total, detail) => total + detail.cantidad, 0);
       const badge = $('#cart-count');
       if (badge) badge.textContent = totalItems;
 
+      // Genera la maqueta con la lista de filas e información del resumen
       $('#cart-content').innerHTML = `
         <div class="cart-layout">
           <div class="panel">
@@ -95,6 +115,11 @@
         </div>`;
     }
 
+    /**
+     * Incrementa o decrementa la cantidad de un ítem en el carrito.
+     * @param {number} id identificador del DetalleCarrito.
+     * @param {number} delta cambio (+1 o -1).
+     */
     async function changeQuantity(id, delta) {
       const detail = state.cart.detalles.find(item => item.id === id);
       const newQty = detail.cantidad + delta;
@@ -114,6 +139,10 @@
       }
     }
 
+    /**
+     * Elimina un producto específico del carrito mediante DELETE `/api/carrito/detalle/{id}`.
+     * @param {number} id identificador del detalle a remover.
+     */
     async function removeDetail(id) {
       if (!confirm('¿Quitar este producto del carrito?')) return;
       try {
@@ -126,6 +155,9 @@
       }
     }
 
+    /**
+     * Vacía completamente el carrito de compras mediante DELETE `/api/carrito`.
+     */
     async function clearCart() {
       if (!confirm('¿Vaciar todo tu carrito de compras?')) return;
       try {
@@ -138,6 +170,9 @@
       }
     }
 
+    /**
+     * Confirma la compra enviando POST a `/api/pedidos/confirmar` y redirige al detalle del pedido.
+     */
     async function confirmOrder() {
       try {
         const order = await api('/api/pedidos/confirmar', { method: 'POST' });
@@ -153,6 +188,7 @@
       }
     }
 
+    // Inicializa la carga del carrito al estar listo el DOM
     document.addEventListener('DOMContentLoaded', loadCart);
   </script>
 </body>

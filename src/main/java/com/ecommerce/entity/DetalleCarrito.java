@@ -3,6 +3,13 @@ package com.ecommerce.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
+/**
+ * Entidad JPA que representa un ítem o producto agregado dentro de un {@link Carrito}.
+ * <p>
+ * Contiene la cantidad seleccionada, el precio unitario del producto y calcula
+ * automáticamente el subtotal correspondiente.
+ * </p>
+ */
 @Entity
 @Table(name = "detalle_carrito")
 public class DetalleCarrito {
@@ -29,6 +36,14 @@ public class DetalleCarrito {
 
     public DetalleCarrito() {}
 
+    /**
+     * Construye un detalle de carrito asociándolo al carrito correspondiente, al producto y a la cantidad solicitada.
+     * Ejecuta automáticamente el método {@link #recalculate()} para establecer el precio unitario e importe subtotal.
+     *
+     * @param carrito  carrito de compras asociador.
+     * @param producto producto seleccionado.
+     * @param cantidad cantidad de unidades.
+     */
     public DetalleCarrito(Carrito carrito, Producto producto, Integer cantidad) {
         this.carrito = carrito;
         this.producto = producto;
@@ -36,6 +51,9 @@ public class DetalleCarrito {
         recalculate();
     }
 
+    /**
+     * Recalcula el precio unitario actual del producto y actualiza el subtotal (precioUnitario * cantidad).
+     */
     public void recalculate() {
         this.precioUnitario = producto.getPrecio();
         this.subtotal = precioUnitario.multiply(BigDecimal.valueOf(cantidad));

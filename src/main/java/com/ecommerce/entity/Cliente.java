@@ -4,6 +4,13 @@ import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entidad JPA que representa a un cliente registrado en la tienda.
+ * <p>
+ * Mantiene la información personal (nombres, correo, dirección, teléfono) y sus
+ * relaciones con la cuenta de {@link Usuario}, sus {@link Pedido}s y su {@link Carrito}.
+ * </p>
+ */
 @Entity
 @Table(name = "cliente")
 public class Cliente {
@@ -35,6 +42,15 @@ public class Cliente {
 
     public Cliente() {}
 
+    /**
+     * Construye un cliente con los datos obligatorios y la cuenta de usuario asociada.
+     *
+     * @param nombres   nombres completos del cliente.
+     * @param correo    correo electrónico.
+     * @param direccion dirección física.
+     * @param telefono  teléfono de contacto.
+     * @param usuario   cuenta de usuario asignada.
+     */
     public Cliente(String nombres, String correo, String direccion, String telefono, Usuario usuario) {
         this.nombres = nombres;
         this.correo = correo;

@@ -6,6 +6,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entidad JPA que representa el carrito de compras de un cliente.
+ * <p>
+ * Mantiene la relación uno a uno con {@link Cliente} y contiene una colección
+ * de {@link DetalleCarrito} correspondiente a los productos seleccionados.
+ * </p>
+ */
 @Entity
 @Table(name = "carrito")
 public class Carrito {
@@ -28,6 +35,12 @@ public class Carrito {
 
     public Carrito() {}
 
+    /**
+     * Crea un nuevo carrito de compras para el cliente especificado.
+     * Inicializa la fecha actual y establece el total inicial en cero.
+     *
+     * @param cliente cliente propietario del carrito.
+     */
     public Carrito(Cliente cliente) {
         this.cliente = cliente;
         this.fecha = LocalDateTime.now();

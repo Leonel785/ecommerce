@@ -7,8 +7,25 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Componente de configuración para la inicialización de datos de prueba al arrancar la aplicación.
+ * <p>
+ * Se ejecuta al iniciar la aplicación mediante un {@link CommandLineRunner} y puebla
+ * la base de datos con un usuario administrador, un cliente demo con carrito y varios productos iniciales
+ * si la tabla de usuarios se encuentra vacía.
+ * </p>
+ */
 @Configuration
 public class DataInitializer {
+    /**
+     * Define el bean runner que genera los registros semilla iniciales.
+     *
+     * @param usuarios  repositorio de usuarios.
+     * @param clientes  repositorio de clientes.
+     * @param productos repositorio de productos.
+     * @param carritos  repositorio de carritos.
+     * @return runner a ejecutar al iniciar la aplicación.
+     */
     @Bean
     CommandLineRunner seed(UsuarioRepository usuarios, ClienteRepository clientes,
                            ProductoRepository productos, CarritoRepository carritos) {

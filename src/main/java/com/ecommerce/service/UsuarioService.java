@@ -13,6 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Servicio de negocio para la gestión de usuarios y registro de clientes.
+ * <p>
+ * Centraliza la autenticación mediante verificación de credenciales
+ * y el proceso de registro de nuevos clientes con la creación automática
+ * de su usuario asociado y carrito de compras inicial.
+ * </p>
+ */
 @Service
 public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
@@ -27,6 +35,15 @@ public class UsuarioService {
         this.carritoRepository = carritoRepository;
     }
 
+    /**
+     * Autentica un usuario verificando que el nombre de usuario exista
+     * y que la contraseña coincida.
+     *
+     * @param username nombre de usuario.
+     * @param password contraseña ingresada.
+     * @return usuario autenticado.
+     * @throws ApiException si el usuario no existe o la contraseña es incorrecta.
+     */
     public Usuario authenticate(String username, String password) {
         Usuario user = usuarioRepository.findByUsername(username)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos"));
@@ -36,6 +53,21 @@ public class UsuarioService {
         return user;
     }
 
+    /**
+     * Registra un nuevo cliente en el sistema.
+     * <p>Pasos ejecutados:</p>
+     * <ol>
+     *   <li>Verifica que el nombre de usuario no esté en uso.</li>
+     *   <li>Verifica que el correo electrónico no esté registrado.</li>
+     *   <li>Crea el registro de {@link Usuario} con rol {@link Rol#CLIENTE}.</li>
+     *   <li>Crea el registro de {@link Cliente} vinculado al usuario.</li>
+     *   <li>Inicializa y vincula un {@link Carrito} de compras vacío.</li>
+     * </ol>
+     *
+     * @param request datos del registro del cliente.
+     * @return entidad cliente creada y persistida.
+     * @throws ApiException si el nombre de usuario o correo electrónico ya existen.
+     */
     @Transactional
     public Cliente register(RegistroRequest request) {
         if (usuarioRepository.findByUsername(request.username().trim()).isPresent()) {

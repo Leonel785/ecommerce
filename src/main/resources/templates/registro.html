@@ -1,15 +1,23 @@
 <!DOCTYPE html>
+<!--
+  Vista de Registro de Nuevos Clientes.
+  Captura datos personales (nombres, correo, dirección, teléfono) y de la cuenta (usuario y contraseña).
+-->
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!-- Importa la cabecera dinámica compartida -->
 <head th:replace="~{fragments/layout :: head('NOVA — Registrarse')}"></head>
 <body>
+  <!-- Importa la barra de navegación superior con la pestaña 'registro' activa -->
   <header th:replace="~{fragments/layout :: header('registro')}"></header>
 
   <main style="display: grid; place-items: center; min-height: 80vh; padding-top: 30px; padding-bottom: 50px;">
+    <!-- Tarjeta contenedora del formulario de registro -->
     <div class="modal-card" style="position: static; box-shadow: var(--shadow); border: 1px solid var(--line); width: min(480px, 100%);">
       <p class="eyebrow">ÚNETE A NOVA</p>
       <h2>Crea tu cuenta</h2>
       <p class="muted">Registra tus datos para poder comprar en nuestra tienda.</p>
       
+      <!-- Formulario de captura de datos del cliente -->
       <form id="register-form">
         <label>Nombres completos
           <input id="reg-nombres" required maxlength="140" placeholder="Ej. Juan Pérez">
@@ -17,6 +25,7 @@
         <label>Correo electrónico
           <input id="reg-correo" type="email" required maxlength="160" placeholder="juan@ejemplo.com">
         </label>
+        <!-- Fila doble para dirección y teléfono -->
         <div class="two-cols">
           <label>Dirección
             <input id="reg-direccion" required maxlength="220" placeholder="Av. Principal 123">
@@ -25,6 +34,7 @@
             <input id="reg-telefono" required maxlength="40" placeholder="999888777">
           </label>
         </div>
+        <!-- Fila doble para credenciales de acceso -->
         <div class="two-cols">
           <label>Usuario
             <input id="reg-username" required maxlength="80" placeholder="juan123">
@@ -37,17 +47,23 @@
         <button class="button button-accent wide" style="margin-top: 15px;" type="submit">Registrarse</button>
       </form>
       
+      <!-- Enlace para usuarios que ya poseen cuenta -->
       <p class="muted" style="margin-top: 20px; text-align: center;">
         ¿Ya tienes cuenta? <a href="/login" style="color: var(--accent); font-weight: 600;">Inicia sesión aquí</a>
       </p>
     </div>
   </main>
 
+  <!-- Componente Toast de notificaciones -->
   <div id="toast" class="toast"></div>
 
+  <!-- Scripts y manejo de eventos de registro -->
   <script src="/common.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      /**
+       * Procesa el envío del formulario de registro enviando los datos al endpoint POST `/api/auth/registro`.
+       */
       $('#register-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         

@@ -2,6 +2,12 @@ package com.ecommerce.entity;
 
 import jakarta.persistence.*;
 
+/**
+ * Entidad JPA que representa una cuenta de usuario para autenticación en el sistema.
+ * <p>
+ * Contiene las credenciales de acceso (username y password) y el {@link Rol} asignado.
+ * </p>
+ */
 @Entity
 @Table(name = "usuario")
 public class Usuario {
@@ -21,6 +27,13 @@ public class Usuario {
 
     public Usuario() {}
 
+    /**
+     * Construye una instancia de Usuario con sus credenciales y rol.
+     *
+     * @param username nombre de usuario único.
+     * @param password contraseña de acceso.
+     * @param rol      rol de permisos asignado.
+     */
     public Usuario(String username, String password, Rol rol) {
         this.username = username;
         this.password = password;

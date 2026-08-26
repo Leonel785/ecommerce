@@ -3,6 +3,12 @@ package com.ecommerce.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
+/**
+ * Entidad JPA que representa un producto dentro del catálogo del e-commerce.
+ * <p>
+ * Contiene el nombre, categoría, precio, unidades en stock y la referencia de imagen del producto.
+ * </p>
+ */
 @Entity
 @Table(name = "producto")
 public class Producto {
@@ -27,6 +33,15 @@ public class Producto {
 
     public Producto() {}
 
+    /**
+     * Construye una instancia de producto con los atributos especificados.
+     *
+     * @param nombre    nombre del producto.
+     * @param categoria categoría del producto.
+     * @param precio    precio unitario.
+     * @param stock     cantidad disponible en inventario.
+     * @param imagen    nombre del archivo de imagen asignado (opcional).
+     */
     public Producto(String nombre, String categoria, BigDecimal precio, Integer stock, String imagen) {
         this.nombre = nombre;
         this.categoria = categoria;

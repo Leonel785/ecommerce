@@ -3,6 +3,13 @@ package com.ecommerce.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
+/**
+ * Entidad JPA que representa la línea o ítem de un {@link Pedido} confirmado.
+ * <p>
+ * Congela la cantidad comprada, el precio unitario y el subtotal al momento en que
+ * se generó la compra, garantizando el histórico de precios sin depender de modificaciones posteriores al catálogo.
+ * </p>
+ */
 @Entity
 @Table(name = "detalle_pedido")
 public class DetallePedido {
@@ -29,6 +36,14 @@ public class DetallePedido {
 
     public DetallePedido() {}
 
+    /**
+     * Construye un detalle de pedido congelando los datos del producto e importe.
+     *
+     * @param pedido         pedido al cual pertenece este detalle.
+     * @param producto       producto comprado.
+     * @param cantidad       cantidad comprada.
+     * @param precioUnitario precio unitario fijado en la compra.
+     */
     public DetallePedido(Pedido pedido, Producto producto, Integer cantidad, BigDecimal precioUnitario) {
         this.pedido = pedido;
         this.producto = producto;

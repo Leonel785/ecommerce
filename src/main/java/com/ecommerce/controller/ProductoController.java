@@ -18,6 +18,24 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * Controlador REST para la gestión de productos del catálogo.
+ * <p>
+ * Los endpoints de búsqueda y consulta son públicos, mientras que la
+ * creación, actualización, eliminación y carga de imágenes están restringidos
+ * a usuarios con rol {@code ADMIN}.
+ * </p>
+ *
+ * <p>Endpoints disponibles:</p>
+ * <ul>
+ *   <li>{@code GET    /api/productos}              — Lista / busca productos.</li>
+ *   <li>{@code GET    /api/productos/{id}}         — Obtiene un producto por id.</li>
+ *   <li>{@code POST   /api/productos}              — Crea un producto (admin).</li>
+ *   <li>{@code PUT    /api/productos/{id}}         — Actualiza un producto (admin).</li>
+ *   <li>{@code DELETE /api/productos/{id}}         — Elimina un producto (admin).</li>
+ *   <li>{@code POST   /api/productos/upload}       — Sube la imagen de un producto (admin).</li>
+ * </ul>
+ */
 @RestController
 @RequestMapping("/api/productos")
 public class ProductoController {
@@ -27,6 +45,14 @@ public class ProductoController {
         this.productoService = productoService;
     }
 
+    /**
+     * Lista los productos del catálogo permitiendo filtrar opcionalmente por
+     * texto de búsqueda y/o categoría. Ambos filtros son combinables.
+     *
+     * @param buscar    texto parcial a buscar en el nombre (opcional).
+     * @param categoria categoría exacta a filtrar (opcional).
+     * @return lista de productos que cumplen los criterios.
+     */
     @GetMapping
     public List<ProductoResponse> all(
             @RequestParam(required = false) String buscar,
@@ -35,11 +61,25 @@ public class ProductoController {
                 .map(ProductoResponse::from).toList();
     }
 
+    /**
+     * Obtiene el detalle de un producto por su identificador.
+     *
+     * @param id identificador del producto.
+     * @return producto encontrado.
+     * @throws ApiException si no existe un producto con el id indicado.
+     */
     @GetMapping("/{id}")
     public ProductoResponse one(@PathVariable Long id) {
         return ProductoResponse.from(productoService.findById(id));
     }
 
+    /**
+     * Crea un nuevo producto en el catálogo. Endpoint restringido a administradores.
+     *
+     * @param request datos del producto a crear.
+     * @param session sesión HTTP del administrador.
+     * @return producto creado.
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProductoResponse create(@Valid @RequestBody ProductoRequest request, HttpSession session) {
@@ -47,6 +87,14 @@ public class ProductoController {
         return ProductoResponse.from(productoService.create(request));
     }
 
+    /**
+     * Actualiza los datos de un producto existente. Endpoint restringido a administradores.
+     *
+     * @param id      identificador del producto a actualizar.
+     * @param request nuevos datos del producto.
+     * @param session sesión HTTP del administrador.
+     * @return producto actualizado.
+     */
     @PutMapping("/{id}")
     public ProductoResponse update(@PathVariable Long id, @Valid @RequestBody ProductoRequest request,
                                    HttpSession session) {
@@ -54,6 +102,12 @@ public class ProductoController {
         return ProductoResponse.from(productoService.update(id, request));
     }
 
+    /**
+     * Elimina un producto del catálogo. Endpoint restringido a administradores.
+     *
+     * @param id      identificador del producto a eliminar.
+     * @param session sesión HTTP del administrador.
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id, HttpSession session) {
@@ -61,56 +115,75 @@ public class ProductoController {
         productoService.delete(id);
     }
 
+    /**
+     * Sube la imagen de un producto al servidor. Endpoint restringido a administradores.
+     * <p>Reglas de validación aplicadas:</p>
+     * <ul>
+     *   <li>El archivo no puede estar vacío.</li>
+     *   <li>El tamaño máximo permitido es de 5 MB.</li>
+     *   <li>El archivo debe tener una extensión válida (.jpg, .jpeg, .png, .webp).</li>
+     * </ul>
+     * <p>El archivo se guarda tanto en {@code src/main/resources/static/uploads/productos/}
+     * como en {@code target/classes/static/uploads/productos/} para que esté
+     * disponible en tiempo de desarrollo y al ejecutar el JAR empaquetado.</p>
+     *
+     * @param file    archivo de imagen enviado en el campo {@code file}.
+     * @param session sesión HTTP del administrador.
+     * @return mapa con el nombre aleatorio generado para el archivo subido.
+     * @throws ApiException si el archivo es inválido, demasiado grande o no se puede guardar.
+     */
     @PostMapping("/upload")
     public Map<String, String> uploadImage(@RequestParam("file") MultipartFile file, HttpSession session) {
         SessionGuard.requireAdmin(session);
-        
+
         if (file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El archivo está vacío");
         }
-        
+
         // 10. Limitar tamaño máximo de imagen a 5 MB.
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El tamaño de la imagen supera el límite de 5 MB");
         }
-        
+
         String originalName = file.getOriginalFilename();
         if (originalName == null || !originalName.contains(".")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El archivo debe tener una extensión válida");
         }
-        
+
         String ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
-        
+
         // 9. Validar formatos JPG, JPEG, PNG, WEBP
         if (!ext.equals(".jpg") && !ext.equals(".jpeg") && !ext.equals(".png") && !ext.equals(".webp")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Formatos de imagen permitidos: JPG, JPEG, PNG, WEBP");
         }
-        
+
         String filename = UUID.randomUUID().toString() + ext;
-        
+
         try {
             String baseDir = System.getProperty("user.dir");
-            
-            // Save to src/main/resources/static/uploads/productos/
+
+            // Persistimos en la carpeta de recursos del proyecto para que el archivo
+            // quede disponible al servir estáticos durante el desarrollo.
             File srcFolder = new File(baseDir, "src/main/resources/static/uploads/productos");
             if (!srcFolder.exists()) {
                 srcFolder.mkdirs();
             }
             File srcFile = new File(srcFolder, filename);
             file.transferTo(srcFile);
-            
-            // Copy to target/classes/static/uploads/productos/
+
+            // Duplicamos el archivo en la carpeta target/classes para que también
+            // esté disponible al ejecutar la aplicación empaquetada (java -jar).
             File targetFolder = new File(baseDir, "target/classes/static/uploads/productos");
             if (!targetFolder.exists()) {
                 targetFolder.mkdirs();
             }
             File targetFile = new File(targetFolder, filename);
             Files.copy(srcFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            
+
         } catch (IOException e) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al guardar el archivo en el servidor: " + e.getMessage());
         }
-        
+
         return Map.of("filename", filename);
     }
 }

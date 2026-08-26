@@ -3,6 +3,16 @@ package com.ecommerce.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * Objeto de transferencia de datos (DTO) para la solicitud de registro de nuevos clientes.
+ *
+ * @param nombres   nombres completos del cliente (obligatorio).
+ * @param correo    correo electrónico de contacto (obligatorio y con formato válido).
+ * @param direccion dirección física de envío (opcional).
+ * @param telefono  teléfono de contacto (opcional).
+ * @param username  nombre de usuario único para inicio de sesión (obligatorio).
+ * @param password  contraseña de acceso (obligatoria).
+ */
 public record RegistroRequest(
         @NotBlank(message = "El nombre es obligatorio") String nombres,
         @NotBlank(message = "El correo es obligatorio") @Email(message = "El correo debe ser válido") String correo,

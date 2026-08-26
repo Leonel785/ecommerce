@@ -1,26 +1,40 @@
 <!DOCTYPE html>
+<!--
+  Vista del Historial de Pedidos del Cliente.
+  Muestra todos los pedidos realizados por el usuario autenticado ordenados del más reciente al más antiguo.
+-->
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!-- Importa la cabecera dinámica compartida -->
 <head th:replace="~{fragments/layout :: head('NOVA — Mis Pedidos')}"></head>
 <body>
+  <!-- Importa la barra de navegación superior con la pestaña 'pedidos' activa -->
   <header th:replace="~{fragments/layout :: header('pedidos')}"></header>
 
   <main>
     <section id="pedidos-view" class="view">
+      <!-- Título de sección -->
       <div class="page-title">
         <p class="eyebrow">HISTORIAL</p>
         <h1>Mis pedidos</h1>
         <p>Consulta el estado de tus compras y sus detalles.</p>
       </div>
+
+      <!-- Contenedor dinámico de la lista de pedidos -->
       <div id="orders-content">
         <div class="loading">Cargando tus pedidos...</div>
       </div>
     </section>
   </main>
 
+  <!-- Componente Toast de notificaciones -->
   <div id="toast" class="toast"></div>
 
+  <!-- Scripts y lógica interactiva de consulta de historial -->
   <script src="/common.js"></script>
   <script>
+    /**
+     * Consulta el historial de pedidos del cliente desde GET `/api/pedidos`.
+     */
     async function loadOrders() {
       try {
         const orders = await api('/api/pedidos');
@@ -30,6 +44,10 @@
       }
     }
 
+    /**
+     * Renderiza las tarjetas informativas para cada uno de los pedidos realizados.
+     * @param {Array} orders lista de pedidos del cliente.
+     */
     function renderOrders(orders) {
       if (!orders || orders.length === 0) {
         $('#orders-content').innerHTML = `
@@ -72,12 +90,13 @@
               <span style="font-size: 14px; color: var(--muted); font-weight: normal;">Total pagado:</span>
               <strong style="margin-left: 8px;">${money(order.total)}</strong>
             </div>
-            <a class="button button-light" href="/pedido/${order.id}" style="padding: 8px 15px; font-size: 12px; border-radius: 4px;">Ver detalle</a>
+            <a class="button button-light" href="/pedido/${order.id}" style="padding: 6px 15px; font-size: 12px; border-radius: 4px;">Ver detalle</a>
           </div>
         </article>
       `).join('');
     }
 
+    // Inicializa la consulta al cargar el DOM
     document.addEventListener('DOMContentLoaded', loadOrders);
   </script>
 </body>

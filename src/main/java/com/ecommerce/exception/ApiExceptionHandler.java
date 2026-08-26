@@ -8,8 +8,25 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Manejador global de excepciones para todos los controladores REST de la aplicación.
+ * <p>
+ * Captura excepciones del tipo {@link ApiException}, errores de validación de campos
+ * {@link MethodArgumentNotValidException} y cualquier error no controlado,
+ * retornando una estructura JSON estandarizada con marca de tiempo, código de estado,
+ * mensaje y ruta de la petición.
+ * </p>
+ */
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    /**
+     * Captura las excepciones de negocio lanzadas mediante {@link ApiException}.
+     *
+     * @param ex      excepción capturada.
+     * @param request petición HTTP actual.
+     * @return respuesta HTTP con el código de estado y JSON descriptivo.
+     */
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<?> handleApi(ApiException ex, HttpServletRequest request) {
         return ResponseEntity.status(ex.getStatus()).body(Map.of(
@@ -21,6 +38,13 @@ public class ApiExceptionHandler {
         ));
     }
 
+    /**
+     * Captura los errores de validación de argumentos annotated con {@code @Valid}.
+     *
+     * @param ex      excepción de validación.
+     * @param request petición HTTP actual.
+     * @return respuesta HTTP 400 Bad Request con el mensaje del primer campo erróneo.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String message = ex.getBindingResult().getFieldErrors().stream()
@@ -36,6 +60,13 @@ public class ApiExceptionHandler {
         ));
     }
 
+    /**
+     * Captura cualquier excepción no controlada o inesperada producida en el servidor.
+     *
+     * @param ex      excepción inesperada.
+     * @param request petición HTTP actual.
+     * @return respuesta HTTP 500 Internal Server Error con mensaje genérico de error.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleUnexpected(Exception ex, HttpServletRequest request) {
         return ResponseEntity.internalServerError().body(Map.of(

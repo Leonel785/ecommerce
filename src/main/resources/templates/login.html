@@ -1,15 +1,23 @@
 <!DOCTYPE html>
+<!--
+  Vista de Formulario de Inicio de Sesión (Login).
+  Permite ingresar con credenciales de usuario o utilizar accesos rápidos con cuentas demo.
+-->
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!-- Importa la cabecera compartida -->
 <head th:replace="~{fragments/layout :: head('NOVA — Iniciar Sesión')}"></head>
 <body>
+  <!-- Importa la barra de navegación superior con la pestaña 'login' activa -->
   <header th:replace="~{fragments/layout :: header('login')}"></header>
 
   <main style="display: grid; place-items: center; min-height: 70vh;">
+    <!-- Tarjeta del formulario de inicio de sesión -->
     <div class="modal-card" style="position: static; box-shadow: var(--shadow); border: 1px solid var(--line);">
       <p class="eyebrow">BIENVENIDO A NOVA</p>
       <h2>Inicia sesión</h2>
       <p class="muted">Usa una cuenta demo o regístrate para explorar.</p>
       
+      <!-- Formulario de credenciales -->
       <form id="login-form">
         <label>Usuario
           <input id="username" autocomplete="username" required>
@@ -18,6 +26,7 @@
           <input id="password" type="password" autocomplete="current-password" required>
         </label>
         
+        <!-- Botones de relleno rápido con credenciales de prueba (Demo) -->
         <div class="demo-hints" style="margin-top: 10px;">
           <button type="button" data-demo="cliente">Cliente demo</button>
           <button type="button" data-demo="admin">Admin demo</button>
@@ -26,17 +35,23 @@
         <button class="button button-accent wide" type="submit">Ingresar</button>
       </form>
       
+      <!-- Enlace para usuarios no registrados -->
       <p class="muted" style="margin-top: 20px; text-align: center;">
         ¿No tienes cuenta? <a href="/registro" style="color: var(--accent); font-weight: 600;">Regístrate aquí</a>
       </p>
     </div>
   </main>
 
+  <!-- Componente Toast de notificaciones -->
   <div id="toast" class="toast"></div>
 
+  <!-- Scripts y manejo de eventos de autenticación -->
   <script src="/common.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      /**
+       * Procesa el envío del formulario de login y autentica contra POST `/api/auth/login`.
+       */
       $('#login-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         try {
@@ -49,6 +64,7 @@
           });
           toast(`Bienvenido, ${response.username}`);
           setTimeout(() => {
+            // Redirige al panel correspondiente según el rol de la respuesta
             if (response.rol === 'ADMIN') {
               window.location.href = '/admin/productos';
             } else {
@@ -60,6 +76,9 @@
         }
       });
 
+      /**
+       * Autocompleta los campos de texto con las credenciales demo de cliente o administrador.
+       */
       document.querySelectorAll('[data-demo]').forEach((button) => {
         button.addEventListener('click', () => {
           const admin = button.dataset.demo === 'admin';
