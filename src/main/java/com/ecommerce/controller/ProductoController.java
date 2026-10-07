@@ -4,8 +4,6 @@ import com.ecommerce.dto.ProductoRequest;
 import com.ecommerce.dto.ProductoResponse;
 import com.ecommerce.exception.ApiException;
 import com.ecommerce.service.ProductoService;
-import com.ecommerce.util.SessionGuard;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.io.File;
 import java.io.IOException;
@@ -19,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Controlador REST para la gestión de productos del catálogo.
@@ -81,13 +80,12 @@ public class ProductoController {
      * Crea un nuevo producto en el catálogo. Endpoint restringido a administradores.
      *
      * @param request datos del producto a crear.
-     * @param session sesión HTTP del administrador.
      * @return producto creado.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ProductoResponse create(@Valid @RequestBody ProductoRequest request, HttpSession session) {
-        SessionGuard.requireAdmin(session);
+    public ProductoResponse create(@Valid @RequestBody ProductoRequest request) {
         return ProductoResponse.from(productoService.create(request));
     }
 
@@ -96,13 +94,11 @@ public class ProductoController {
      *
      * @param id      identificador del producto a actualizar.
      * @param request nuevos datos del producto.
-     * @param session sesión HTTP del administrador.
      * @return producto actualizado.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ProductoResponse update(@PathVariable Long id, @Valid @RequestBody ProductoRequest request,
-                                   HttpSession session) {
-        SessionGuard.requireAdmin(session);
+    public ProductoResponse update(@PathVariable Long id, @Valid @RequestBody ProductoRequest request) {
         return ProductoResponse.from(productoService.update(id, request));
     }
 
@@ -110,12 +106,11 @@ public class ProductoController {
      * Elimina un producto del catálogo. Endpoint restringido a administradores.
      *
      * @param id      identificador del producto a eliminar.
-     * @param session sesión HTTP del administrador.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id, HttpSession session) {
-        SessionGuard.requireAdmin(session);
+    public void delete(@PathVariable Long id) {
         productoService.delete(id);
     }
 
@@ -132,13 +127,12 @@ public class ProductoController {
      * disponible en tiempo de desarrollo y al ejecutar el JAR empaquetado.</p>
      *
      * @param file    archivo de imagen enviado en el campo {@code file}.
-     * @param session sesión HTTP del administrador.
      * @return mapa con el nombre aleatorio generado para el archivo subido.
      * @throws ApiException si el archivo es inválido, demasiado grande o no se puede guardar.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/upload")
-    public Map<String, String> uploadImage(@RequestParam("file") MultipartFile file, HttpSession session) {
-        SessionGuard.requireAdmin(session);
+    public Map<String, String> uploadImage(@RequestParam("file") MultipartFile file) {
 
         if (file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El archivo está vacío");

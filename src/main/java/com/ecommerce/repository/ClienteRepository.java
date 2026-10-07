@@ -18,6 +18,14 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByUsuario(Usuario usuario);
 
     /**
+     * Busca el cliente asociado al id de un usuario (usado con el usuario autenticado).
+     *
+     * @param usuarioId id del usuario.
+     * @return {@link Optional} con el cliente o vacío.
+     */
+    Optional<Cliente> findByUsuarioId(Long usuarioId);
+
+    /**
      * Busca un cliente por el índice ciego (HMAC) de su correo. El correo se guarda
      * cifrado, por lo que no se puede consultar directamente por su valor.
      *

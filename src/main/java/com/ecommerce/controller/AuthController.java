@@ -7,33 +7,41 @@ import com.ecommerce.entity.Rol;
 import com.ecommerce.entity.Usuario;
 import com.ecommerce.exception.ApiException;
 import com.ecommerce.repository.ClienteRepository;
-import com.ecommerce.repository.UsuarioRepository;
+import com.ecommerce.security.AuthUser;
 import com.ecommerce.security.LoginAttemptService;
 import com.ecommerce.service.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Controlador REST responsable de la autenticación y gestión de sesiones de usuario.
+ * Controlador REST de autenticación (login, registro, usuario actual y logout).
  * <p>
- * Expone los endpoints de login, registro, consulta de la sesión actual y logout.
- * La sesión se mantiene en {@link HttpSession} y se identifica por el atributo
- * {@code usuarioId} junto con el {@code rol} asociado.
+ * Al autenticarse, la identidad ({@link AuthUser} + rol) se guarda en el {@code SecurityContext}
+ * de Spring Security, que se persiste en la sesión HTTP. A partir de ahí, la autorización de
+ * todas las rutas la resuelve {@code SecurityConfig} y {@code @PreAuthorize}.
  * </p>
  * <p>Medidas de seguridad: límite de intentos de login, rotación del identificador de
  * sesión al autenticarse (anti session-fixation) y registro de eventos de seguridad.</p>
  *
- * <p>Endpoints disponibles:</p>
  * <ul>
  *   <li>{@code POST /api/auth/login} — Autentica y crea la sesión.</li>
  *   <li>{@code POST /api/auth/registro} — Registra un nuevo cliente e inicia sesión.</li>
@@ -48,29 +56,31 @@ public class AuthController {
 
     private final UsuarioService usuarioService;
     private final ClienteRepository clienteRepository;
-    private final UsuarioRepository usuarioRepository;
     private final LoginAttemptService loginAttempts;
+    private final SecurityContextRepository securityContextRepository;
 
     public AuthController(UsuarioService usuarioService,
                           ClienteRepository clienteRepository,
-                          UsuarioRepository usuarioRepository,
-                          LoginAttemptService loginAttempts) {
+                          LoginAttemptService loginAttempts,
+                          SecurityContextRepository securityContextRepository) {
         this.usuarioService = usuarioService;
         this.clienteRepository = clienteRepository;
-        this.usuarioRepository = usuarioRepository;
         this.loginAttempts = loginAttempts;
+        this.securityContextRepository = securityContextRepository;
     }
 
     /**
-     * Autentica al usuario con sus credenciales y crea una nueva sesión HTTP.
+     * Autentica al usuario con sus credenciales y deja la identidad en el contexto de seguridad.
      *
-     * @param request     cuerpo con {@code username} y {@code password}.
-     * @param httpRequest petición HTTP (IP de origen y rotación de sesión).
+     * @param request      cuerpo con {@code username} y {@code password}.
+     * @param httpRequest  petición HTTP (IP de origen y rotación de sesión).
+     * @param httpResponse respuesta HTTP (necesaria para persistir el contexto en la sesión).
      * @return datos del usuario autenticado (id, username, rol y nombres).
      * @throws ApiException si las credenciales son inválidas o hay demasiados intentos fallidos.
      */
     @PostMapping("/login")
-    public UsuarioResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public UsuarioResponse login(@Valid @RequestBody LoginRequest request,
+                                 HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         String key = httpRequest.getRemoteAddr() + "|" + request.username().trim().toLowerCase(Locale.ROOT);
         if (loginAttempts.isBlocked(key)) {
             log.warn("Login bloqueado por demasiados intentos: ip={}", httpRequest.getRemoteAddr());
@@ -87,7 +97,7 @@ public class AuthController {
             throw ex;
         }
         loginAttempts.reset(key);
-        startSession(httpRequest, user);
+        startSession(httpRequest, httpResponse, user);
         log.info("Login correcto: usuarioId={}", user.getId());
 
         String nombres = "Administrador";
@@ -102,74 +112,74 @@ public class AuthController {
     /**
      * Registra un nuevo cliente en el sistema e inicia sesión automáticamente.
      *
-     * @param request     datos del registro (nombres, correo, username, password, etc.).
-     * @param httpRequest petición HTTP (rotación de sesión).
+     * @param request      datos del registro (nombres, correo, username, password, etc.).
+     * @param httpRequest  petición HTTP (rotación de sesión).
+     * @param httpResponse respuesta HTTP (persistencia del contexto de seguridad).
      * @return datos del usuario recién creado.
      */
     @PostMapping("/registro")
-    public UsuarioResponse register(@Valid @RequestBody RegistroRequest request, HttpServletRequest httpRequest) {
+    public UsuarioResponse register(@Valid @RequestBody RegistroRequest request,
+                                    HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         Cliente cliente = usuarioService.register(request);
         Usuario user = cliente.getUsuario();
-        startSession(httpRequest, user);
+        startSession(httpRequest, httpResponse, user);
         return new UsuarioResponse(user.getId(), user.getUsername(), user.getRol().name(), cliente.getNombres());
     }
 
     /**
-     * Devuelve la información del usuario actualmente autenticado.
+     * Devuelve la información del usuario actualmente autenticado (o {@code authenticated:false}).
      *
-     * @param session sesión HTTP actual.
-     * @return respuesta con la información del usuario o estado de no autenticado.
+     * @param user principal de Spring Security; {@code null} si la petición es anónima.
+     * @return información del usuario o estado de no autenticado.
      */
     @GetMapping("/me")
-    public ResponseEntity<?> me(HttpSession session) {
-        if (session.getAttribute("usuarioId") == null) {
+    public ResponseEntity<?> me(@AuthenticationPrincipal AuthUser user) {
+        if (user == null) {
             return ResponseEntity.ok(Map.of("authenticated", false));
         }
 
-        Long userId = (Long) session.getAttribute("usuarioId");
-        String username = (String) session.getAttribute("username");
-        String rol = (String) session.getAttribute("rol");
-
         String nombres = "Administrador";
-        if ("CLIENTE".equals(rol)) {
-            nombres = usuarioRepository.findById(userId)
-                    .flatMap(clienteRepository::findByUsuario)
+        if (user.rol() == Rol.CLIENTE) {
+            nombres = clienteRepository.findByUsuarioId(user.id())
                     .map(Cliente::getNombres)
                     .orElse("Cliente");
         }
 
         return ResponseEntity.ok(Map.of(
             "authenticated", true,
-            "username", username,
-            "rol", rol,
+            "username", user.username(),
+            "rol", user.rol().name(),
             "nombres", nombres
         ));
     }
 
     /**
-     * Cierra la sesión actual del usuario invalidando todos los atributos
-     * almacenados en {@link HttpSession}.
-     *
-     * @param session sesión HTTP a invalidar.
-     * @return mensaje confirmando el cierre de sesión.
+     * Cierra la sesión: limpia el contexto de seguridad e invalida la sesión HTTP.
+     * Es idempotente (no falla si la sesión ya había expirado).
      */
     @PostMapping("/logout")
-    public Map<String, String> logout(HttpSession session) {
-        session.invalidate();
+    public Map<String, String> logout(HttpServletRequest request, HttpServletResponse response) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        new SecurityContextLogoutHandler().logout(request, response, auth);
         return Map.of("message", "Sesión cerrada");
     }
 
     /**
-     * Crea una sesión nueva con identificador rotado (evita session fixation)
-     * y guarda en ella la identidad del usuario.
+     * Crea una sesión nueva con identificador rotado (evita session fixation), construye la
+     * autenticación con el rol del usuario y la persiste en la sesión.
      */
-    private void startSession(HttpServletRequest httpRequest, Usuario user) {
-        httpRequest.getSession(true);
-        httpRequest.changeSessionId();
-        HttpSession session = httpRequest.getSession(false);
-        session.setAttribute("usuarioId", user.getId());
-        session.setAttribute("username", user.getUsername());
-        session.setAttribute("rol", user.getRol().name());
+    private void startSession(HttpServletRequest request, HttpServletResponse response, Usuario user) {
+        request.getSession(true);
+        request.changeSessionId();
+
+        AuthUser principal = new AuthUser(user.getId(), user.getUsername(), user.getRol());
+        Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_" + user.getRol().name())));
+
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+        securityContextRepository.saveContext(context, request, response);
     }
 
     /**

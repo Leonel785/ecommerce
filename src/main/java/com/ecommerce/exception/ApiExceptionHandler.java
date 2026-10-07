@@ -3,6 +3,7 @@ package com.ecommerce.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -56,6 +57,22 @@ public class ApiExceptionHandler {
                 "status", 400,
                 "error", "Bad Request",
                 "message", message,
+                "path", request.getRequestURI()
+        ));
+    }
+
+    /**
+     * Denegaciones de {@code @PreAuthorize} (rol insuficiente). Sin este manejador caerían en el
+     * manejador genérico y se convertirían en un 500.
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<?> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 403,
+                "error", "Forbidden",
+                "message", "No tienes permisos para esta operación",
                 "path", request.getRequestURI()
         ));
     }

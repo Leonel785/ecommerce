@@ -6,11 +6,14 @@ import com.ecommerce.entity.EstadoPedido;
 import com.ecommerce.entity.Pedido;
 import com.ecommerce.exception.ApiException;
 import com.ecommerce.service.PedidoService;
-import com.ecommerce.util.SessionGuard;
-import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import com.ecommerce.entity.Rol;
+import com.ecommerce.security.AuthUser;
+import com.ecommerce.security.CurrentClient;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 /**
  * Controlador REST para la gestión de pedidos.
@@ -33,9 +36,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/pedidos")
 public class PedidoController {
     private final PedidoService pedidoService;
+    private final CurrentClient currentClient;
 
-    public PedidoController(PedidoService pedidoService) {
+    public PedidoController(PedidoService pedidoService, CurrentClient currentClient) {
         this.pedidoService = pedidoService;
+        this.currentClient = currentClient;
     }
 
     /**
@@ -44,24 +49,24 @@ public class PedidoController {
      * descuenta las cantidades del inventario, genera el {@code Pedido} con sus
      * detalles y vacía el carrito.</p>
      *
-     * @param session sesión HTTP del cliente autenticado.
      * @return pedido confirmado.
      */
+    @PreAuthorize("hasRole('CLIENTE')")
     @PostMapping("/confirmar")
-    public PedidoResponse confirm(HttpSession session) {
-        return PedidoResponse.from(pedidoService.confirm(SessionGuard.requireClient(session)));
+    public PedidoResponse confirm(@AuthenticationPrincipal AuthUser user) {
+        return PedidoResponse.from(pedidoService.confirm(currentClient.from(user)));
     }
 
     /**
      * Lista todos los pedidos del cliente autenticado, ordenados del más
      * reciente al más antiguo.
      *
-     * @param session sesión HTTP del cliente.
      * @return lista de pedidos del cliente.
      */
+    @PreAuthorize("hasRole('CLIENTE')")
     @GetMapping
-    public List<PedidoResponse> all(HttpSession session) {
-        return pedidoService.findFor(SessionGuard.requireClient(session)).stream()
+    public List<PedidoResponse> all(@AuthenticationPrincipal AuthUser user) {
+        return pedidoService.findFor(currentClient.from(user)).stream()
                 .map(PedidoResponse::from).toList();
     }
 
@@ -71,26 +76,24 @@ public class PedidoController {
      * propios pedidos, los administradores pueden ver cualquiera.</p>
      *
      * @param id      identificador del pedido.
-     * @param session sesión HTTP del usuario.
      * @return pedido solicitado.
      * @throws ApiException si la sesión no es válida, el cliente no es dueño
      *                     del pedido o el rol no tiene permisos.
      */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
-    public PedidoResponse getById(@PathVariable Long id, HttpSession session) {
-        if (session.getAttribute("usuarioId") == null) {
+    public PedidoResponse getById(@PathVariable Long id, @AuthenticationPrincipal AuthUser user) {
+        if (user == null) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
         }
-        String rol = (String) session.getAttribute("rol");
         Pedido pedido = pedidoService.findById(id);
 
-        if ("CLIENTE".equals(rol)) {
-            Cliente cliente = SessionGuard.requireClient(session);
+        // El ADMIN puede ver cualquier pedido; el CLIENTE solo los suyos.
+        if (user.rol() == Rol.CLIENTE) {
+            Cliente cliente = currentClient.from(user);
             if (!pedido.getCliente().getId().equals(cliente.getId())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "No tienes permisos para ver este pedido");
             }
-        } else if (!"ADMIN".equals(rol)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "No tienes permisos para esta operación");
         }
 
         return PedidoResponse.from(pedido);
@@ -100,12 +103,11 @@ public class PedidoController {
      * Lista todos los pedidos del sistema. Acceso exclusivo para usuarios
      * con rol {@code ADMIN}.
      *
-     * @param session sesión HTTP del administrador.
      * @return lista completa de pedidos.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin")
-    public List<PedidoResponse> adminAll(HttpSession session) {
-        SessionGuard.requireAdmin(session);
+    public List<PedidoResponse> adminAll() {
         return pedidoService.findAll().stream()
                 .map(PedidoResponse::from).toList();
     }
@@ -117,12 +119,11 @@ public class PedidoController {
      *
      * @param id      identificador del pedido.
      * @param estado  nuevo estado a aplicar (provisto como query param).
-     * @param session sesión HTTP del administrador.
      * @return pedido con el estado actualizado.
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/admin/{id}/estado")
-    public PedidoResponse updateEstado(@PathVariable Long id, @RequestParam EstadoPedido estado, HttpSession session) {
-        SessionGuard.requireAdmin(session);
+    public PedidoResponse updateEstado(@PathVariable Long id, @RequestParam EstadoPedido estado) {
         return PedidoResponse.from(pedidoService.updateEstado(id, estado));
     }
 }

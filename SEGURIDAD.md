@@ -28,6 +28,7 @@ Revisión de código (SAST manual) del proyecto y medidas aplicadas. Clasificaci
 - **Claves fuera del código**: `APP_CRYPTO_KEY` y `APP_HMAC_KEY` por variables de entorno; la aplicación no arranca si faltan o son inválidas.
 - **Migración automática** de datos existentes (`EncryptionBackfill`) + script `database/migracion-cifrado.sql`.
 - **Sin credenciales por defecto**: el admin se crea con `ADMIN_PASSWORD` o una contraseña aleatoria mostrada una vez; el cliente demo es opcional. Se elimina el `root` por defecto de la BD.
+- **Autorización con Spring Security** (reemplaza a `SessionGuard`, que fue eliminado): la identidad (`AuthUser` + rol) vive en el `SecurityContext` y se persiste en la sesión; las rutas se protegen en `SecurityConfig` con política *denegar por defecto* (ADMIN, CLIENTE, autenticado, público) y, como segunda barrera, con `@PreAuthorize` en cada controlador. La propiedad de un pedido (el cliente solo ve los suyos) se sigue validando en `PedidoController`. Respuestas 401/403 en JSON para `/api/**` y redirección a `/login` (o a la página del rol) para las páginas.
 - **CSRF** con token en cookie `XSRF-TOKEN` y cabecera `X-XSRF-TOKEN` (ya integrado en `common.js` y en la subida de imágenes).
 - **Cabeceras**: CSP, `X-Frame-Options: DENY`, HSTS, `Referrer-Policy`, `X-Content-Type-Options: nosniff`.
 - **Anti fuerza bruta**: 5 intentos fallidos por IP+usuario → bloqueo de 15 min (HTTP 429) y log de eventos de seguridad.
@@ -42,7 +43,7 @@ Revisión de código (SAST manual) del proyecto y medidas aplicadas. Clasificaci
 1. **Pago simulado**: `PedidoService.confirm` marca el pedido como `PAGADO` sin pasarela de pago. Integrar un proveedor (Culqi, Niubiz, Stripe) y no almacenar datos de tarjeta (PCI-DSS).
 2. **Condición de carrera en el stock**: dos compras simultáneas pueden vender stock inexistente. Usar bloqueo (`@Lock(PESSIMISTIC_WRITE)`) o `@Version`.
 3. **CSP con `'unsafe-inline'`**: los templates usan scripts y `onclick` en línea. Moverlos a archivos `.js` y usar `addEventListener` permitiría una CSP estricta sin `unsafe-inline`.
-4. **Autorización por rol**: sigue en `SessionGuard`. A futuro migrar a Spring Security (`@PreAuthorize`) para que sea declarativa y auditable.
+4. **Rate limiting general y HTTPS**: solo el login tiene límite de intentos; falta limitar el resto de la API (p. ej. con Bucket4j) y servir la aplicación por HTTPS con `COOKIE_SECURE=true`.
 5. **Límite de intentos en memoria**: válido para una instancia; con varias usar Redis. Detrás de un proxy configurar `server.forward-headers-strategy` para que la IP sea la real.
 6. **Rotación de claves**: el prefijo `enc:v1:` permite añadir versiones; falta un procedimiento de rotación. En producción guardar las claves en un gestor (Vault, AWS KMS, Azure Key Vault).
 7. **Base de datos**: usar un usuario con mínimos privilegios (no `root`), TLS en la conexión (`sslMode=REQUIRED`), `ddl-auto=validate` en producción y copias de seguridad cifradas.
@@ -59,3 +60,17 @@ Revisión de código (SAST manual) del proyecto y medidas aplicadas. Clasificaci
 - `POST` sin la cabecera `X-XSRF-TOKEN` → HTTP 403.
 - Crear un producto con nombre `<img src=x onerror=alert(1)>` → se muestra como texto, no se ejecuta.
 - Subir un `.php` renombrado a `.jpg` → rechazado por firma binaria.
+
+### Matriz de autorización (verificación manual)
+
+| Petición | Sin sesión | CLIENTE | ADMIN |
+|---|---|---|---|
+| `GET /api/productos` | 200 | 200 | 200 |
+| `POST /api/productos` (con token CSRF) | 401 | 403 | 200/201 |
+| `GET /api/carrito` | 401 | 200 | 403 |
+| `POST /api/pedidos/confirmar` | 401 | 200 | 403 |
+| `GET /api/pedidos/admin` | 401 | 403 | 200 |
+| `GET /api/pedidos/{id}` de otro cliente | 401 | 403 | 200 |
+| Página `/admin/productos` | redirige a `/login` | redirige a `/` | 200 |
+| Página `/carrito` | redirige a `/login` | 200 | redirige a `/admin/productos` |
+| Cualquier ruta no listada (p. ej. `/actuator`, `/app.js`) | redirige a `/login` | 403 (redirige a `/`) | 403 (redirige a `/admin/productos`) |

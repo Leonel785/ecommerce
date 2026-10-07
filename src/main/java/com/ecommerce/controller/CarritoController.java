@@ -3,17 +3,19 @@ package com.ecommerce.controller;
 import com.ecommerce.dto.*;
 import com.ecommerce.entity.Cliente;
 import com.ecommerce.service.CarritoService;
-import com.ecommerce.util.SessionGuard;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.web.bind.annotation.*;
+import com.ecommerce.security.AuthUser;
+import com.ecommerce.security.CurrentClient;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 /**
  * Controlador REST para la gestión del carrito de compras del cliente autenticado.
  * <p>
  * Todos los endpoints requieren una sesión activa con rol {@code CLIENTE};
- * la verificación se realiza mediante {@link SessionGuard#requireClient(HttpSession)}.
+ * la verificación se realiza mediante {@code @PreAuthorize("hasRole('CLIENTE')")} junto con las reglas de {@code SecurityConfig}.
  * </p>
  *
  * <p>Endpoints disponibles:</p>
@@ -25,25 +27,27 @@ import org.springframework.web.bind.annotation.*;
  *   <li>{@code DELETE /api/carrito}             — Vacía el carrito completo.</li>
  * </ul>
  */
+@PreAuthorize("hasRole('CLIENTE')")
 @RestController
 @RequestMapping("/api/carrito")
 public class CarritoController {
     private final CarritoService carritoService;
+    private final CurrentClient currentClient;
 
-    public CarritoController(CarritoService carritoService) {
+    public CarritoController(CarritoService carritoService, CurrentClient currentClient) {
         this.carritoService = carritoService;
+        this.currentClient = currentClient;
     }
 
     /**
      * Obtiene el carrito del cliente autenticado. Si el cliente aún no tiene
      * un carrito, se crea uno vacío automáticamente.
      *
-     * @param session sesión HTTP del cliente autenticado.
      * @return carrito con la lista de detalles y el total calculado.
      */
     @GetMapping
-    public CarritoResponse get(HttpSession session) {
-        Cliente cliente = SessionGuard.requireClient(session);
+    public CarritoResponse get(@AuthenticationPrincipal AuthUser user) {
+        Cliente cliente = currentClient.from(user);
         return CarritoResponse.from(carritoService.getOrCreate(cliente));
     }
 
@@ -53,12 +57,11 @@ public class CarritoController {
      * el stock disponible.
      *
      * @param request cuerpo con el id del producto y la cantidad a agregar.
-     * @param session sesión HTTP del cliente.
      * @return carrito actualizado con el nuevo detalle.
      */
     @PostMapping
-    public CarritoResponse add(@Valid @RequestBody CarritoRequest request, HttpSession session) {
-        return CarritoResponse.from(carritoService.add(SessionGuard.requireClient(session), request));
+    public CarritoResponse add(@Valid @RequestBody CarritoRequest request, @AuthenticationPrincipal AuthUser user) {
+        return CarritoResponse.from(carritoService.add(currentClient.from(user), request));
     }
 
     /**
@@ -67,37 +70,34 @@ public class CarritoController {
      *
      * @param id      identificador del {@code DetalleCarrito} a modificar.
      * @param request cuerpo con la nueva cantidad del producto.
-     * @param session sesión HTTP del cliente.
      * @return carrito actualizado.
      */
     @PutMapping("/detalle/{id}")
     public CarritoResponse update(@PathVariable Long id, @Valid @RequestBody CarritoRequest request,
-                                  HttpSession session) {
-        return CarritoResponse.from(carritoService.update(SessionGuard.requireClient(session), id, request));
+                                  @AuthenticationPrincipal AuthUser user) {
+        return CarritoResponse.from(carritoService.update(currentClient.from(user), id, request));
     }
 
     /**
      * Elimina un producto específico del carrito del cliente.
      *
      * @param id      identificador del {@code DetalleCarrito} a eliminar.
-     * @param session sesión HTTP del cliente.
      * @return carrito resultante tras la eliminación.
      */
     @DeleteMapping("/detalle/{id}")
-    public CarritoResponse remove(@PathVariable Long id, HttpSession session) {
-        return CarritoResponse.from(carritoService.remove(SessionGuard.requireClient(session), id));
+    public CarritoResponse remove(@PathVariable Long id, @AuthenticationPrincipal AuthUser user) {
+        return CarritoResponse.from(carritoService.remove(currentClient.from(user), id));
     }
 
     /**
      * Vacía por completo el carrito del cliente autenticado, eliminando todos
      * sus detalles y reseteando el total a cero.
      *
-     * @param session sesión HTTP del cliente.
      * @return mensaje confirmando la operación.
      */
     @DeleteMapping
-    public Map<String, String> clear(HttpSession session) {
-        carritoService.clear(SessionGuard.requireClient(session));
+    public Map<String, String> clear(@AuthenticationPrincipal AuthUser user) {
+        carritoService.clear(currentClient.from(user));
         return Map.of("message", "Carrito vaciado");
     }
 }

@@ -1,140 +1,69 @@
 package com.ecommerce.controller;
 
-import jakarta.servlet.http.HttpSession;
+import com.ecommerce.entity.Rol;
+import com.ecommerce.security.AuthUser;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 /**
- * Controlador MVC responsable de servir las vistas Thymeleaf del lado servidor.
+ * Controlador de vistas Thymeleaf.
  * <p>
- * Realiza las redirecciones pertinentes según el estado de la sesión y el rol
- * del usuario, evitando que un usuario autenticado vuelva a las pantallas de
- * login/registro y restringiendo el panel de administración a los administradores.
+ * El control de acceso a las páginas (sesión iniciada, rol ADMIN o CLIENTE) lo resuelve
+ * {@code SecurityConfig}: sin sesión se redirige a {@code /login}; con un rol incorrecto se
+ * redirige a la página de inicio de ese rol. Este controlador solo elige la plantilla.
  * </p>
  */
 @Controller
 public class ViewController {
 
-    /**
-     * Muestra el formulario de inicio de sesión. Si el usuario ya está
-     * autenticado, se redirige al panel correspondiente según su rol.
-     *
-     * @param session sesión HTTP actual.
-     * @return nombre de la vista {@code login} o redirección.
-     */
+    /** Página de login. Si el usuario ya tiene sesión, lo envía a su página principal. */
     @GetMapping("/login")
-    public String login(HttpSession session) {
-        if (session.getAttribute("usuarioId") != null) {
-            String rol = (String) session.getAttribute("rol");
-            if ("ADMIN".equals(rol)) {
-                return "redirect:/admin/productos";
-            }
-            return "redirect:/";
+    public String login(@AuthenticationPrincipal AuthUser user) {
+        if (user != null) {
+            return user.rol() == Rol.ADMIN ? "redirect:/admin/productos" : "redirect:/";
         }
         return "login";
     }
 
-    /**
-     * Muestra el formulario de registro. Si el usuario ya está autenticado,
-     * se redirige a la página principal.
-     *
-     * @param session sesión HTTP actual.
-     * @return nombre de la vista {@code registro} o redirección.
-     */
+    /** Página de registro. Si el usuario ya tiene sesión, redirige al inicio. */
     @GetMapping("/registro")
-    public String registro(HttpSession session) {
-        if (session.getAttribute("usuarioId") != null) {
+    public String registro(@AuthenticationPrincipal AuthUser user) {
+        if (user != null) {
             return "redirect:/";
         }
         return "registro";
     }
 
-    /**
-     * Sirve la página principal con el catálogo de productos.
-     * Mapea las rutas raíz, {@code /index} y {@code /productos} a la misma vista.
-     *
-     * @param session sesión HTTP actual.
-     * @return nombre de la vista {@code index}.
-     */
+    /** Catálogo de productos (público). */
     @GetMapping({"/", "/index", "/productos"})
-    public String index(HttpSession session) {
+    public String index() {
         return "index";
     }
 
-    /**
-     * Muestra el carrito de compras del cliente. Requiere sesión iniciada
-     * y rol {@code CLIENTE}; los administradores son redirigidos a su panel.
-     *
-     * @param session sesión HTTP actual.
-     * @return nombre de la vista {@code carrito} o redirección.
-     */
+    /** Carrito de compras (rol CLIENTE). */
     @GetMapping("/carrito")
-    public String carrito(HttpSession session) {
-        if (session.getAttribute("usuarioId") == null) {
-            return "redirect:/login";
-        }
-        String rol = (String) session.getAttribute("rol");
-        if ("ADMIN".equals(rol)) {
-            return "redirect:/admin/productos";
-        }
+    public String carrito() {
         return "carrito";
     }
 
-    /**
-     * Muestra el panel de administración de productos. Acceso restringido
-     * exclusivamente a usuarios con rol {@code ADMIN}.
-     *
-     * @param session sesión HTTP actual.
-     * @return nombre de la vista {@code admin-productos} o redirección.
-     */
+    /** Panel de administración de productos y pedidos (rol ADMIN). */
     @GetMapping("/admin/productos")
-    public String adminProductos(HttpSession session) {
-        if (session.getAttribute("usuarioId") == null) {
-            return "redirect:/login";
-        }
-        String rol = (String) session.getAttribute("rol");
-        if (!"ADMIN".equals(rol)) {
-            return "redirect:/";
-        }
+    public String adminProductos() {
         return "admin-productos";
     }
 
-    /**
-     * Muestra el listado de pedidos del cliente autenticado. Requiere rol
-     * {@code CLIENTE}; los administradores son redirigidos a su panel.
-     *
-     * @param session sesión HTTP actual.
-     * @return nombre de la vista {@code mis-pedidos} o redirección.
-     */
+    /** Historial de pedidos del cliente (rol CLIENTE). */
     @GetMapping("/mis-pedidos")
-    public String misPedidos(HttpSession session) {
-        if (session.getAttribute("usuarioId") == null) {
-            return "redirect:/login";
-        }
-        String rol = (String) session.getAttribute("rol");
-        if ("ADMIN".equals(rol)) {
-            return "redirect:/admin/productos";
-        }
+    public String misPedidos() {
         return "mis-pedidos";
     }
 
-    /**
-     * Muestra el detalle de un pedido específico. Requiere sesión iniciada.
-     * <p>La verificación de propiedad del pedido (cliente dueño vs administrador)
-     * se delega al endpoint REST {@code /api/pedidos/{id}} consumido por la vista.</p>
-     *
-     * @param id      identificador del pedido.
-     * @param session sesión HTTP actual.
-     * @param model   modelo de Thymeleaf donde se añade el id del pedido.
-     * @return nombre de la vista {@code pedido-detalle} o redirección.
-     */
+    /** Detalle de un pedido (usuario autenticado; la propiedad se valida en la API). */
     @GetMapping("/pedido/{id}")
-    public String pedidoDetalle(@PathVariable Long id, HttpSession session, Model model) {
-        if (session.getAttribute("usuarioId") == null) {
-            return "redirect:/login";
-        }
+    public String pedidoDetalle(@PathVariable Long id, Model model) {
         model.addAttribute("pedidoId", id);
         return "pedido-detalle";
     }

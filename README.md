@@ -35,7 +35,7 @@ com.ecommerce
 ├── entity         # Entidades JPA (Usuario, Cliente, Producto, Carrito, Pedido, ...)
 ├── dto            # Objetos de transferencia de datos
 ├── exception       # Manejo centralizado de errores
-├── util            # SessionGuard (control de acceso por sesión)
+├── security        # CryptoService, AuthUser, CurrentClient, LoginAttemptService
 └── config          # DataInitializer (datos de prueba)
 ```
 
@@ -99,7 +99,7 @@ Ya no hay credenciales fijas. Al iniciar por primera vez se crea el usuario `adm
 
 ## 🔒 Seguridad implementada
 
-Ver el detalle completo en [`SEGURIDAD.md`](SEGURIDAD.md): contraseñas con BCrypt, cifrado AES-256-GCM de datos personales, CSRF, cabeceras HTTP de seguridad, límite de intentos de login, anti session-fixation, validación de entrada, subida de archivos por firma binaria y escape de HTML (XSS).
+Ver el detalle completo en [`SEGURIDAD.md`](SEGURIDAD.md): Spring Security (autorización por rol con reglas por ruta y `@PreAuthorize`), contraseñas con BCrypt, cifrado AES-256-GCM de datos personales, CSRF, cabeceras HTTP de seguridad, límite de intentos de login, anti session-fixation, validación de entrada, subida de archivos por firma binaria y escape de HTML (XSS).
 
 ## 📡 API REST
 
