@@ -40,7 +40,7 @@
         const orders = await api('/api/pedidos');
         renderOrders(orders);
       } catch (error) {
-        $('#orders-content').innerHTML = `<div class="empty"><h3>Error al cargar pedidos</h3><p>${error.message}</p></div>`;
+        $('#orders-content').innerHTML = `<div class="empty"><h3>Error al cargar pedidos</h3><p>${esc(error.message)}</p></div>`;
       }
     }
 
@@ -68,13 +68,13 @@
                 ${new Date(order.fecha).toLocaleString('es-PE')}
               </div>
             </div>
-            <span class="badge" style="border-radius: 20px; font-weight: 600;">${order.estado}</span>
+            <span class="badge" style="border-radius: 20px; font-weight: 600;">${esc(order.estado)}</span>
           </div>
           
           <div style="margin: 15px 0;">
             ${order.detalles.slice(0, 3).map(detail => `
               <div class="order-item" style="font-size: 13px;">
-                <span>${detail.cantidad} × ${detail.producto}</span>
+                <span>${detail.cantidad} × ${esc(detail.producto)}</span>
                 <strong>${money(detail.subtotal)}</strong>
               </div>
             `).join('')}

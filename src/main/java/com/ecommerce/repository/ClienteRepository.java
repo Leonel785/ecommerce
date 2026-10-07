@@ -18,10 +18,11 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByUsuario(Usuario usuario);
 
     /**
-     * Busca un cliente por su correo electrónico.
+     * Busca un cliente por el índice ciego (HMAC) de su correo. El correo se guarda
+     * cifrado, por lo que no se puede consultar directamente por su valor.
      *
-     * @param correo correo electrónico a consultar.
+     * @param correoHash HMAC-SHA256 del correo normalizado.
      * @return {@link Optional} con el cliente encontrado o vacío.
      */
-    Optional<Cliente> findByCorreo(String correo);
+    Optional<Cliente> findByCorreoHash(String correoHash);
 }

@@ -99,9 +99,9 @@
         <div class="cart-row" style="grid-template-columns: 2fr 1fr 1fr;">
           <div class="cart-product">
             <span class="mini-visual" style="overflow: hidden; border: 1px solid var(--line);">
-              ${detail.imagen ? `<img src="/uploads/productos/${detail.imagen}" alt="${detail.producto}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" alt="Sin imagen" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
+              ${detail.imagen ? `<img src="/uploads/productos/${esc(detail.imagen)}" alt="${esc(detail.producto)}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" alt="Sin imagen" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
             </span>
-            <span>${detail.producto}</span>
+            <span>${esc(detail.producto)}</span>
           </div>
           <div class="qty" style="justify-content: center;">
             <strong>${detail.cantidad} unidad(es)</strong>

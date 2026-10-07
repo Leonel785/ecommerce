@@ -58,15 +58,32 @@ git clone https://github.com/Leonel785/ecommerce.git
 cd ecommerce
 ```
 
-### 2. Configurar la base de datos
+### 2. Configurar variables de entorno (obligatorio)
 
-Crea la base de datos (o deja que la aplicación la cree automáticamente) y ajusta las credenciales en `src/main/resources/application.properties`, o exporta las variables de entorno:
+Copia `.env.example` como `.env` (ya está en `.gitignore`; **nunca lo subas al repositorio**) y completa los valores. VS Code lo carga automáticamente mediante `.vscode/launch.json`.
+
+Las claves de cifrado se generan **una sola vez** y deben conservarse: si se pierden, los datos cifrados no se pueden recuperar.
 
 ```bash
-export DB_URL=jdbc:mysql://localhost:3306/ecommerce?createDatabaseIfNotExist=true&serverTimezone=UTC
-export DB_USERNAME=root
-export DB_PASSWORD=tu_password
+# Linux / macOS / Git Bash  (ejecutar dos veces: una para APP_CRYPTO_KEY y otra para APP_HMAC_KEY)
+openssl rand -base64 32
 ```
+
+```powershell
+# Windows PowerShell (ejecutar dos veces)
+$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
+```
+
+| Variable | Descripción |
+|---|---|
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexión a MySQL (sin contraseña por defecto) |
+| `APP_CRYPTO_KEY` | Clave AES-256 (32 bytes en Base64) para cifrar datos personales |
+| `APP_HMAC_KEY` | Clave HMAC-SHA256 (32 bytes en Base64, distinta de la anterior) |
+| `ADMIN_PASSWORD` | (Opcional) contraseña inicial del admin; si se omite se genera una y se muestra una vez en el log |
+| `SEED_DEMO_USER` | (Opcional) `true` crea un cliente de demostración con contraseña aleatoria |
+| `COOKIE_SECURE` | `true` cuando se sirva por HTTPS |
+
+> **Base de datos existente:** ejecuta antes `database/migracion-cifrado.sql`. Al arrancar, los datos actuales se cifran solos y las contraseñas antiguas pasan a BCrypt en el siguiente login.
 
 ### 3. Ejecutar la aplicación
 
@@ -76,14 +93,13 @@ export DB_PASSWORD=tu_password
 
 La aplicación estará disponible en `http://localhost:8080`.
 
-### 4. Usuarios de prueba
+### 4. Usuario administrador
 
-Al iniciar por primera vez, el sistema crea automáticamente los siguientes usuarios:
+Ya no hay credenciales fijas. Al iniciar por primera vez se crea el usuario `admin` con la contraseña de `ADMIN_PASSWORD` o, si no se definió, con una contraseña aleatoria impresa **una sola vez** en la consola (`CREDENCIAL INICIAL`). Cámbiala/guárdala en un gestor de contraseñas.
 
-| Usuario | Contraseña | Rol |
-|---|---|---|
-| `admin` | `admin123` | ADMIN |
-| `cliente` | `cliente123` | CLIENTE |
+## 🔒 Seguridad implementada
+
+Ver el detalle completo en [`SEGURIDAD.md`](SEGURIDAD.md): contraseñas con BCrypt, cifrado AES-256-GCM de datos personales, CSRF, cabeceras HTTP de seguridad, límite de intentos de login, anti session-fixation, validación de entrada, subida de archivos por firma binaria y escape de HTML (XSS).
 
 ## 📡 API REST
 

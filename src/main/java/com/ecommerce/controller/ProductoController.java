@@ -14,6 +14,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,6 +41,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/productos")
 public class ProductoController {
+    private static final Logger log = LoggerFactory.getLogger(ProductoController.class);
+
     private final ProductoService productoService;
 
     public ProductoController(ProductoService productoService) {
@@ -145,16 +149,16 @@ public class ProductoController {
             throw new ApiException(HttpStatus.BAD_REQUEST, "El tamaño de la imagen supera el límite de 5 MB");
         }
 
-        String originalName = file.getOriginalFilename();
-        if (originalName == null || !originalName.contains(".")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "El archivo debe tener una extensión válida");
+        // No se confía en el nombre ni en el Content-Type enviados por el cliente:
+        // el tipo real se determina por la firma binaria (magic bytes) del contenido.
+        String ext;
+        try (java.io.InputStream in = file.getInputStream()) {
+            ext = detectImageExtension(in.readNBytes(12));
+        } catch (IOException e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "No se pudo leer el archivo enviado");
         }
-
-        String ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
-
-        // 9. Validar formatos JPG, JPEG, PNG, WEBP
-        if (!ext.equals(".jpg") && !ext.equals(".jpeg") && !ext.equals(".png") && !ext.equals(".webp")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Formatos de imagen permitidos: JPG, JPEG, PNG, WEBP");
+        if (ext == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Formatos de imagen permitidos: JPG, PNG, WEBP");
         }
 
         String filename = UUID.randomUUID().toString() + ext;
@@ -181,9 +185,31 @@ public class ProductoController {
             Files.copy(srcFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
         } catch (IOException e) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al guardar el archivo en el servidor: " + e.getMessage());
+            log.error("Error al guardar la imagen del producto", e);
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Error al guardar el archivo en el servidor");
         }
 
         return Map.of("filename", filename);
+    }
+
+    /**
+     * Determina la extensión real de una imagen a partir de su firma binaria.
+     *
+     * @param h primeros bytes del archivo.
+     * @return ".jpg", ".png", ".webp" o {@code null} si el contenido no es un formato permitido.
+     */
+    private static String detectImageExtension(byte[] h) {
+        if (h.length >= 3 && (h[0] & 0xFF) == 0xFF && (h[1] & 0xFF) == 0xD8 && (h[2] & 0xFF) == 0xFF) {
+            return ".jpg";
+        }
+        if (h.length >= 8 && (h[0] & 0xFF) == 0x89 && h[1] == 'P' && h[2] == 'N' && h[3] == 'G'
+                && h[4] == 0x0D && h[5] == 0x0A && h[6] == 0x1A && h[7] == 0x0A) {
+            return ".png";
+        }
+        if (h.length >= 12 && h[0] == 'R' && h[1] == 'I' && h[2] == 'F' && h[3] == 'F'
+                && h[8] == 'W' && h[9] == 'E' && h[10] == 'B' && h[11] == 'P') {
+            return ".webp";
+        }
+        return null;
     }
 }

@@ -126,7 +126,7 @@
         productsList = await api('/api/productos');
         renderAdminProducts();
       } catch (error) {
-        $('#admin-products').innerHTML = `<p class="muted">Error al cargar productos: ${error.message}</p>`;
+        $('#admin-products').innerHTML = `<p class="muted">Error al cargar productos: ${esc(error.message)}</p>`;
       }
     }
 
@@ -138,11 +138,11 @@
         <div class="admin-product" style="grid-template-columns: 1.6fr 0.8fr 0.5fr auto;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <span style="width: 40px; height: 40px; border: 1px solid var(--line); display: inline-block; overflow: hidden; flex-shrink: 0; border-radius: 4px;">
-              ${product.imagen ? `<img src="/uploads/productos/${product.imagen}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
+              ${product.imagen ? `<img src="/uploads/productos/${esc(product.imagen)}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
             </span>
             <div>
-              <strong>${product.nombre}</strong>
-              <small>${product.categoria}</small>
+              <strong>${esc(product.nombre)}</strong>
+              <small>${esc(product.categoria)}</small>
             </div>
           </div>
           <span style="font-weight: 700;">${money(product.precio)}</span>
@@ -220,6 +220,8 @@
         try {
           const uploadRes = await fetch('/api/productos/upload', {
             method: 'POST',
+            headers: { 'X-XSRF-TOKEN': csrfToken() },
+            credentials: 'same-origin',
             body: fileFormData
           });
           const text = await uploadRes.text();
@@ -263,7 +265,7 @@
         const orders = await api('/api/pedidos/admin');
         renderAdminOrders(orders);
       } catch (error) {
-        $('#admin-orders').innerHTML = `<p class="muted">Error al cargar pedidos: ${error.message}</p>`;
+        $('#admin-orders').innerHTML = `<p class="muted">Error al cargar pedidos: ${esc(error.message)}</p>`;
       }
     }
 

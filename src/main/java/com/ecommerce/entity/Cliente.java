@@ -1,5 +1,6 @@
 package com.ecommerce.entity;
 
+import com.ecommerce.security.EncryptedStringConverter;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,16 +19,26 @@ public class Cliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 140)
+    // Datos personales (PII) cifrados en reposo con AES-256-GCM (ver CryptoService).
+    // Las longitudes son mayores porque el texto cifrado en Base64 ocupa más que el original.
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 768)
     private String nombres;
 
-    @Column(nullable = false, unique = true, length = 160)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(nullable = false, length = 768)
     private String correo;
 
-    @Column(name = "direccion", length = 220)
+    /** Índice ciego (HMAC-SHA256) del correo: permite verificar unicidad sin guardar el correo en claro. */
+    @Column(name = "correo_hash", unique = true, length = 64)
+    private String correoHash;
+
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "direccion", length = 1024)
     private String direccion;
 
-    @Column(length = 40)
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 256)
     private String telefono;
 
     @OneToOne
@@ -62,6 +73,7 @@ public class Cliente {
     public Long getId() { return id; }
     public String getNombres() { return nombres; }
     public String getCorreo() { return correo; }
+    public String getCorreoHash() { return correoHash; }
     public String getDireccion() { return direccion; }
     public String getTelefono() { return telefono; }
     public Usuario getUsuario() { return usuario; }
@@ -70,6 +82,7 @@ public class Cliente {
     public void setId(Long id) { this.id = id; }
     public void setNombres(String nombres) { this.nombres = nombres; }
     public void setCorreo(String correo) { this.correo = correo; }
+    public void setCorreoHash(String correoHash) { this.correoHash = correoHash; }
     public void setDireccion(String direccion) { this.direccion = direccion; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public void setUsuario(Usuario usuario) { this.usuario = usuario; }

@@ -77,7 +77,7 @@
         const products = await api(url);
         renderProducts(products);
       } catch (error) {
-        $('#products-grid').innerHTML = `<div class="empty"><h3>Catálogo no disponible</h3><p>${error.message}</p></div>`;
+        $('#products-grid').innerHTML = `<div class="empty"><h3>Catálogo no disponible</h3><p>${esc(error.message)}</p></div>`;
       }
     }
 
@@ -90,7 +90,7 @@
         populateCategories();
         renderProducts(allProducts);
       } catch (error) {
-        $('#products-grid').innerHTML = `<div class="empty"><h3>Catálogo no disponible</h3><p>${error.message}</p></div>`;
+        $('#products-grid').innerHTML = `<div class="empty"><h3>Catálogo no disponible</h3><p>${esc(error.message)}</p></div>`;
       }
     }
 
@@ -100,7 +100,7 @@
     function populateCategories() {
       const categories = [...new Set(allProducts.map(p => p.categoria))];
       $('#category-filter').innerHTML = '<option value="">Todas las categorías</option>' + 
-        categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
     }
 
     /**
@@ -111,10 +111,10 @@
       $('#products-grid').innerHTML = products.length ? products.map(product => `
         <article class="product-card">
           <div class="product-visual">
-            ${product.imagen ? `<img src="/uploads/productos/${product.imagen}" alt="${product.nombre}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" alt="Sin imagen" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
+            ${product.imagen ? `<img src="/uploads/productos/${esc(product.imagen)}" alt="${esc(product.nombre)}" style="width:100%; height:100%; object-fit:cover;">` : `<img src="/uploads/productos/default.jpg" alt="Sin imagen" style="width:100%; height:100%; object-fit:cover; opacity: 0.75;">`}
           </div>
-          <span class="product-category">${product.categoria}</span>
-          <div class="product-name">${product.nombre}</div>
+          <span class="product-category">${esc(product.categoria)}</span>
+          <div class="product-name">${esc(product.nombre)}</div>
           <div class="product-meta">
             <span class="price">${money(product.precio)}</span>
             <span class="stock ${product.stock === 0 ? 'out' : ''}">${product.stock ? `${product.stock} disponibles` : 'Agotado'}</span>

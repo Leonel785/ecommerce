@@ -6,6 +6,7 @@ import com.ecommerce.exception.ApiException;
 import com.ecommerce.repository.ProductoRepository;
 import java.io.File;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class ProductoService {
+    /** Solo se permiten nombres generados por el sistema (UUID + extensión de imagen). */
+    private static final Pattern SAFE_IMAGE_NAME = Pattern.compile("^[A-Za-z0-9-]{1,64}\\.(jpg|jpeg|png|webp)$");
+
     private final ProductoRepository productoRepository;
 
     public ProductoService(ProductoRepository productoRepository) {
@@ -147,6 +151,8 @@ public class ProductoService {
      */
     private void deleteImageFile(String filename) {
         if (filename == null || filename.trim().isEmpty()) return;
+        // Defensa contra path traversal (p. ej. "../../etc/x") y protección de la imagen por defecto.
+        if (!SAFE_IMAGE_NAME.matcher(filename).matches() || "default.jpg".equals(filename)) return;
         try {
             String baseDir = System.getProperty("user.dir");
             

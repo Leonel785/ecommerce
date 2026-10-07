@@ -2,3 +2,8 @@ target/
 .idea/
 *.iml
 .DS_Store
+
+# Secretos: NUNCA subir al repositorio
+.env
+.env.*
+!.env.example

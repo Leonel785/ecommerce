@@ -18,13 +18,37 @@ const $ = (selector) => document.querySelector(selector);
 const money = (value) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value || 0);
 
 /**
+ * Escapa texto para insertarlo de forma segura en HTML (previene XSS).
+ * Usar SIEMPRE en datos dinámicos que se inyecten con innerHTML / plantillas.
+ * @param {*} value valor a escapar.
+ * @returns {string} texto con &, <, >, " y ' escapados.
+ */
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+
+/**
+ * Lee el token CSRF que el servidor entrega en la cookie XSRF-TOKEN.
+ * @returns {string} token CSRF (vacío si aún no existe).
+ */
+const csrfToken = () => {
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+};
+
+/**
  * Envoltorio para realizar peticiones HTTP Fetch a la API REST del backend con manejo automático de JSON y errores.
+ * Adjunta el token CSRF en la cabecera X-XSRF-TOKEN en todas las peticiones.
  * @param {string} url endpoint de la API.
  * @param {Object} options opciones adicionales de la petición fetch.
  * @returns {Promise<any>} datos parseados del cuerpo de la respuesta.
  */
 const api = async (url, options = {}) => {
-  const response = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
+  const response = await fetch(url, {
+    ...options,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken(), ...(options.headers || {}) }
+  });
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
   if (!response.ok) throw new Error(data?.message || 'No se pudo completar la operación');
